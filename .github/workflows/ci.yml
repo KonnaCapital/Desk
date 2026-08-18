@@ -45,8 +45,20 @@ jobs:
       - name: Audit production npm dependencies
         run: npm audit --omit=dev --audit-level=high
 
+  rust-audit:
+    name: RustSec advisory audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install cargo-audit
-        run: cargo install cargo-audit --locked
+        run: cargo install cargo-audit --locked --version 0.22.2
 
       - name: Audit Rust dependencies
         run: cargo audit --file src-tauri/Cargo.lock

@@ -24,6 +24,24 @@ macOS support is not claimed yet. A stable Mac release still requires a real
 macOS build and runtime check, Developer ID signing, and notarization. Treat a
 Mac DMG without those checks as a preview.
 
+## Maintainer release secrets
+
+Tag releases create one draft from the Windows job. The macOS job waits for
+that draft and uploads a stable `Desk-macOS-Universal.dmg` only when all of the
+following GitHub Actions secrets are configured: `APPLE_CERTIFICATE` (base64
+PKCS#12), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`,
+`APPLE_PASSWORD`, `APPLE_TEAM_ID`, and `KEYCHAIN_PASSWORD`. The signing
+identity must begin with `Developer ID Application:`; Apple Distribution is
+rejected for a direct-download DMG. The workflow validates notarization before
+uploading the stable asset.
+
+If those macOS secrets are absent, CI uses ad-hoc identity `-` and uploads only
+the Actions artifact `Desk-macOS-Universal-PREVIEW.dmg`; it does not attach
+that preview to the release. Windows signing is optional and uses
+`WINDOWS_CERTIFICATE` (base64 PKCS#12), `WINDOWS_CERTIFICATE_PASSWORD`,
+`WINDOWS_CERTIFICATE_THUMBPRINT`, and `WINDOWS_TIMESTAMP_URL`. Never put
+secret values in this repository or in an issue.
+
 ## Local data
 
 Desk writes `board.json` and, when available, `board.backup.json` under Tauri's
