@@ -75,6 +75,19 @@ function isView(value: unknown): value is View {
   return value === "board" || value === "clock";
 }
 
+export function isStateEnvelope(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  const data = raw as Record<string, unknown>;
+  const timer = data.timer;
+  return (
+    data.version === 1 &&
+    Array.isArray(data.cards) &&
+    timer !== null &&
+    typeof timer === "object" &&
+    !Array.isArray(timer)
+  );
+}
+
 export function parseState(raw: unknown): BoardState {
   const base = emptyState();
   if (!raw || typeof raw !== "object") return base;

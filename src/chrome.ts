@@ -35,7 +35,7 @@ export async function mountChrome(store: Store): Promise<void> {
         closeProtectionMessage =
           result === "timed-out"
             ? t("persistenceCloseTimeout")
-            : t("persistenceCloseError");
+            : store.persistenceStatus.error ?? t("persistenceCloseError");
         applyPersistenceStatus(store.persistenceStatus);
       },
     );

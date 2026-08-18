@@ -20,6 +20,7 @@ import {
   createTauriPersist,
   type Persist,
 } from "./store.ts";
+import { registerCloseHandler } from "./close.ts";
 import { mountTimer } from "./timer.ts";
 
 function snapshotPersist(
@@ -53,6 +54,14 @@ function persistenceOf(store: Store): {
   dataPath: string;
 } {
   return store.persistenceStatus;
+}
+
+async function assertRecoversFromInvalidPrimary(primary: string): Promise<void> {
+  const backupState = JSON.stringify({ ...emptyState(), pinned: false });
+  const store = await Store.load(snapshotPersist(primary, backupState));
+
+  assert.equal(store.state.pinned, false);
+  assert.equal(persistenceOf(store).status, "recovered");
 }
 
 describe("addToInbox", () => {
@@ -155,6 +164,15 @@ describe("Store", () => {
     assert.equal(state.version, 1);
   });
 
+  it("accepts a legacy version-1 persisted state with autostartEnabled", async () => {
+    const legacy = JSON.stringify({ ...emptyState(), autostartEnabled: true });
+    const store = await Store.load(snapshotPersist(legacy));
+
+    assert.equal(persistenceOf(store).status, "saved");
+    assert.equal(store.state.version, 1);
+    assert.equal("autostartEnabled" in store.state, false);
+  });
+
   it("serializes overlapping flushes and leaves the latest state last", async () => {
     let releaseFirst!: () => void;
     const firstSave = new Promise<void>((resolve) => {
@@ -212,9 +230,33 @@ describe("Store", () => {
     assert.equal(persistenceOf(store).status, "recovered");
   });
 
+  it("recovers from a null primary using valid backup JSON", async () => {
+    await assertRecoversFromInvalidPrimary(JSON.stringify(null));
+  });
+
+  it("recovers from an empty object primary using valid backup JSON", async () => {
+    await assertRecoversFromInvalidPrimary(JSON.stringify({}));
+  });
+
+  it("recovers from an unknown-version primary using valid backup JSON", async () => {
+    await assertRecoversFromInvalidPrimary(
+      JSON.stringify({ ...emptyState(), version: 99 }),
+    );
+  });
+
+  it("recovers when a required root container is absent", async () => {
+    const withoutCards = { ...emptyState() } as Record<string, unknown>;
+    delete withoutCards.cards;
+    const withoutTimer = { ...emptyState() } as Record<string, unknown>;
+    delete withoutTimer.timer;
+
+    await assertRecoversFromInvalidPrimary(JSON.stringify(withoutCards));
+    await assertRecoversFromInvalidPrimary(JSON.stringify(withoutTimer));
+  });
+
   it("preserves the valid backup when saving after primary recovery", async () => {
     const backupState = JSON.stringify({ ...emptyState(), pinned: false });
-    const persist = createMemoryPersist("{ malformed", backupState);
+    const persist = createMemoryPersist(JSON.stringify({}), backupState);
     const store = await Store.load(persist);
     store.setPinned(true);
     await store.flush();
@@ -234,6 +276,21 @@ describe("Store", () => {
 
     assert.equal(before.primary, "{ malformed");
     assert.equal(before.backup, "[ malformed");
+  });
+
+  it("blocks writes when structurally invalid primary and backup are both valid JSON", async () => {
+    const primary = JSON.stringify({});
+    const backup = JSON.stringify({ version: 99, cards: [], timer: {} });
+    const persist = snapshotPersist(primary, backup);
+    const store = await Store.load(persist);
+    const before = persist as unknown as { primary: string; backup: string };
+
+    assert.equal(persistenceOf(store).status, "error");
+    store.addToInbox("must not overwrite structurally invalid files");
+    await store.flush();
+
+    assert.equal(before.primary, primary);
+    assert.equal(before.backup, backup);
   });
 
   it("blocks writes when loading persistence returns an invalid shape", async () => {
@@ -307,13 +364,60 @@ describe("Store", () => {
     const store = await Store.load(persist);
 
     store.addToInbox("failure");
-    await assert.doesNotReject(() => store.flush());
+    let flushOutcome: unknown;
+    await assert.doesNotReject(async () => {
+      flushOutcome = await store.flush();
+    });
 
     const status = persistenceOf(store);
+    assert.equal(flushOutcome, "error");
     assert.equal(status.status, "error");
     assert.equal(status.dataPath, "test-data/board.json");
     assert.ok(status.error);
     assert.equal(status.error.includes("secret backend details"), false);
+  });
+
+  it("surfaces a Store save failure before native close destroys the window", async () => {
+    const persist = {
+      dataPath: "test-data/board.json",
+      async load() {
+        return { primary: null, backup: null } as unknown as string | null;
+      },
+      async save() {
+        throw new Error("secret backend details");
+      },
+    } as Persist;
+    const store = await Store.load(persist);
+    store.addToInbox("failure before close");
+
+    let handler!: (event: { preventDefault(): void }) => void | Promise<void>;
+    const events: string[] = [];
+    const registration = await registerCloseHandler(
+      {
+        async onCloseRequested(next) {
+          handler = next;
+          return () => {};
+        },
+        async destroy() {
+          events.push("destroy");
+        },
+      },
+      () => store.flush(),
+      (result) => {
+        events.push(`problem:${result}`);
+        assert.equal(store.persistenceStatus.status, "error");
+        assert.ok(store.persistenceStatus.error);
+      },
+      2_000,
+      async () => {
+        events.push("paint");
+      },
+    );
+
+    assert.equal(registration.registered, true);
+    await handler({ preventDefault: () => events.push("prevent") });
+
+    assert.deepEqual(events, ["prevent", "problem:failed", "paint", "destroy"]);
   });
 });
 

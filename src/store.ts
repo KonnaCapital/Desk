@@ -7,6 +7,7 @@ import {
   completeTimer as completeTimerModel,
   editCard as editCardModel,
   emptyState,
+  isStateEnvelope,
   moveCard as moveCardModel,
   parseState,
   pauseTimer as pauseTimerModel,
@@ -45,6 +46,8 @@ export type PersistenceState = {
   dataPath: string;
 };
 
+export type FlushOutcome = "saved" | "error";
+
 export type MemoryPersist = Persist & {
   readonly primary: string | null;
   readonly backup: string | null;
@@ -69,7 +72,7 @@ export function createMemoryPersist(
       return { primary, backup, dataPath };
     },
     async save(json: string) {
-      if (primary !== null && isJson(primary)) backup = primary;
+      if (primary !== null && isValidStateJson(primary)) backup = primary;
       primary = json;
     },
   };
@@ -88,7 +91,9 @@ type DecodedState =
 function decode(raw: string | null): DecodedState {
   if (raw === null) return { kind: "missing" };
   try {
-    return { kind: "valid", state: parseState(JSON.parse(raw)) };
+    const parsed = JSON.parse(raw);
+    if (!isStateEnvelope(parsed)) return { kind: "malformed" };
+    return { kind: "valid", state: parseState(parsed) };
   } catch {
     return { kind: "malformed" };
   }
@@ -129,10 +134,9 @@ function saveError(dataPath: string): string {
   return `Desk data could not be saved. Data path: ${dataPath}`;
 }
 
-function isJson(raw: string): boolean {
+function isValidStateJson(raw: string): boolean {
   try {
-    JSON.parse(raw);
-    return true;
+    return isStateEnvelope(JSON.parse(raw));
   } catch {
     return false;
   }
@@ -148,7 +152,7 @@ export class Store {
   private revision = 0;
   private lastQueuedRevision = 0;
   private lastSavedRevision = 0;
-  private saveChain: Promise<void> = Promise.resolve();
+  private saveChain: Promise<FlushOutcome> = Promise.resolve("saved");
 
   constructor(
     persist: Persist,
@@ -279,8 +283,9 @@ export class Store {
     }, 200);
   }
 
-  private enqueueSave(): Promise<void> {
-    if (this.writesBlocked || this.revision <= this.lastQueuedRevision) {
+  private enqueueSave(): Promise<FlushOutcome> {
+    if (this.writesBlocked) return Promise.resolve("error");
+    if (this.revision <= this.lastQueuedRevision) {
       return this.saveChain;
     }
 
@@ -288,8 +293,8 @@ export class Store {
     const json = JSON.stringify(this.state, null, 2);
     this.lastQueuedRevision = revision;
 
-    const job = this.saveChain.then(async () => {
-      if (this.writesBlocked) return;
+    const job = this.saveChain.then(async (): Promise<FlushOutcome> => {
+      if (this.writesBlocked) return "error";
       try {
         await this.persist.save(json);
         this.lastSavedRevision = Math.max(this.lastSavedRevision, revision);
@@ -298,28 +303,30 @@ export class Store {
         } else {
           this.setPersistence("saving");
         }
+        return "saved";
       } catch {
         if (this.lastQueuedRevision === revision) {
           this.lastQueuedRevision = this.lastSavedRevision;
         }
         this.setPersistence("error", saveError(this.persistence.dataPath));
+        return "error";
       }
     });
-    this.saveChain = job.catch(() => undefined);
+    this.saveChain = job.catch(() => "error");
     return this.saveChain;
   }
 
-  async flush(): Promise<void> {
+  async flush(): Promise<FlushOutcome> {
     if (this.saveTimer) {
       clearTimeout(this.saveTimer);
       this.saveTimer = null;
     }
-    if (this.writesBlocked) return;
+    if (this.writesBlocked) return "error";
 
     while (true) {
       const targetRevision = this.revision;
-      await this.enqueueSave();
-      if (this.revision <= targetRevision) return;
+      const outcome = await this.enqueueSave();
+      if (this.revision <= targetRevision) return outcome;
     }
   }
 
@@ -400,7 +407,8 @@ export async function createTauriPersist(
     async load() {
       const primary = await readOptional(file);
       const backup = await readOptional(backupFile);
-      previousPrimary = primary !== null && isJson(primary) ? primary : null;
+      previousPrimary =
+        primary !== null && isValidStateJson(primary) ? primary : null;
       return { primary, backup, dataPath };
     },
     async save(json: string) {
