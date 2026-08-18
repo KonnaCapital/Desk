@@ -149,6 +149,24 @@ input:focus {
   color: #fff;
 }
 
+.persistence-status {
+  max-width: min(32vw, 260px);
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.persistence-status[data-status="recovered"] {
+  color: var(--accent);
+}
+
+.persistence-status[data-status="error"] {
+  color: var(--danger);
+}
+
 .view {
   height: calc(100% - var(--chrome-h));
   display: flex;
@@ -385,6 +403,33 @@ body[data-timer="running"] .clock-digits {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
+}
+
+.settings-card {
+  width: min(360px, calc(100% - 24px));
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  user-select: none;
+}
+
+.setting-row input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.settings-status {
+  min-height: 1.4em;
+  margin: 4px 0 0;
+  font-size: 11px;
 }
 
 .overlay-card ul {

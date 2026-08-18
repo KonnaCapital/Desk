@@ -4,28 +4,47 @@
   "description": "Capability for the main window",
   "windows": ["main"],
   "permissions": [
-    "core:default",
+    "core:event:allow-listen",
+    "core:path:allow-join",
+    "core:path:allow-resolve-directory",
     "core:window:allow-set-always-on-top",
     "core:window:allow-start-dragging",
     "core:window:allow-minimize",
     "core:window:allow-close",
-    "fs:default",
+    "core:window:allow-destroy",
+    "core:window:allow-show",
+    "core:window:allow-unminimize",
+    "core:window:allow-set-focus",
     {
       "identifier": "fs:allow-exists",
-      "allow": [{ "path": "$APPLOCALDATA/**" }]
+      "allow": [
+        { "path": "$APPLOCALDATA/board.json" },
+        { "path": "$APPLOCALDATA/board.backup.json" }
+      ]
     },
     {
       "identifier": "fs:allow-mkdir",
-      "allow": [{ "path": "$APPLOCALDATA/**" }]
+      "allow": [{ "path": "$APPLOCALDATA" }]
     },
     {
       "identifier": "fs:allow-read-text-file",
-      "allow": [{ "path": "$APPLOCALDATA/**" }]
+      "allow": [
+        { "path": "$APPLOCALDATA/board.json" },
+        { "path": "$APPLOCALDATA/board.backup.json" }
+      ]
     },
     {
       "identifier": "fs:allow-write-text-file",
-      "allow": [{ "path": "$APPLOCALDATA/**" }]
+      "allow": [
+        { "path": "$APPLOCALDATA/board.json" },
+        { "path": "$APPLOCALDATA/board.backup.json" }
+      ]
     },
-    "notification:default"
+    "notification:allow-is-permission-granted",
+    "notification:allow-request-permission",
+    "notification:allow-notify",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled"
   ]
 }
