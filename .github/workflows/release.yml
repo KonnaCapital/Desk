@@ -86,7 +86,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Desk ${{ github.ref_name }}
-          releaseBody: See SHA256SUMS and the README for installation and signing notes.
+          releaseBody: Desk is two things on your desktop. See the README to install and remove it.
           releaseDraft: true
           prerelease: false
           retryAttempts: 3
