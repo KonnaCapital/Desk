@@ -26,3 +26,8 @@ dist-ssr
 shots/
 app-icon.png
 scripts/
+
+# Local agent workspaces and verification artifacts
+.worktrees/
+.superpowers/
+output/
