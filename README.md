@@ -14,7 +14,7 @@ The same page: [konnacapital.github.io/desk](https://konnacapital.github.io/desk
 
 ## Use it
 
-Capture into Inbox. Move cards to Today, To Do, Done. The clock is 25 minutes, an hour, two hours, or your own time. Pin it. Shrink it to the edge of the screen.
+Capture into Inbox. Move cards to Today, To Do, Done. The clock is 25 minutes, an hour, two hours, or your own time. Shrink it to the edge, then pin it so it stays put and on top.
 
 Settings has one switch: launch at login. Turn it off before you uninstall if you used it.
 

@@ -92,8 +92,6 @@ input:focus {
   background: #1a1a1a;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  cursor: grab;
-  -webkit-app-region: drag;
 }
 
 .chrome button,
@@ -107,6 +105,16 @@ input:focus {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.chrome-left {
+  cursor: grab;
+  -webkit-app-region: drag;
+}
+
+body[data-pinned="true"] .chrome-left {
+  cursor: default;
+  -webkit-app-region: no-drag;
 }
 
 .app-name {
@@ -138,10 +146,20 @@ input:focus {
   border-color: transparent;
 }
 
-.icon-btn:hover,
-.icon-btn.active {
+button,
+.icon-btn {
+  -webkit-app-region: no-drag;
+}
+
+.icon-btn:hover {
   color: var(--text);
   background: var(--bg-hover);
+}
+
+.icon-btn.active {
+  color: #efe9ff;
+  background: var(--accent-dim);
+  border-color: var(--accent);
 }
 
 .icon-btn.close:hover {

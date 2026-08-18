@@ -1,6 +1,6 @@
 [package]
 name = "desk"
-version = "0.1.0"
+version = "0.1.1"
 description = "Desk — local kanban and timer"
 authors = ["KonnaCapital"]
 edition = "2021"

@@ -48,7 +48,7 @@ export function emptyState(): BoardState {
   return {
     version: 1,
     view: "board",
-    pinned: true,
+    pinned: false,
     narrowColumn: "inbox",
     cards: [],
     timer: {
@@ -122,7 +122,7 @@ export function parseState(raw: unknown): BoardState {
   return {
     version: 1,
     view: isView(data.view) ? data.view : base.view,
-    pinned: typeof data.pinned === "boolean" ? data.pinned : true,
+    pinned: typeof data.pinned === "boolean" ? data.pinned : false,
     narrowColumn: isColumn(data.narrowColumn) ? data.narrowColumn : "inbox",
     cards,
     timer: {
