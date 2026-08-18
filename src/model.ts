@@ -22,7 +22,6 @@ export type BoardState = {
   version: 1;
   view: View;
   pinned: boolean;
-  autostartEnabled: boolean;
   narrowColumn: Column;
   cards: Card[];
   timer: TimerState;
@@ -50,7 +49,6 @@ export function emptyState(): BoardState {
     version: 1,
     view: "board",
     pinned: true,
-    autostartEnabled: false,
     narrowColumn: "inbox",
     cards: [],
     timer: {
@@ -112,7 +110,6 @@ export function parseState(raw: unknown): BoardState {
     version: 1,
     view: isView(data.view) ? data.view : base.view,
     pinned: typeof data.pinned === "boolean" ? data.pinned : true,
-    autostartEnabled: Boolean(data.autostartEnabled),
     narrowColumn: isColumn(data.narrowColumn) ? data.narrowColumn : "inbox",
     cards,
     timer: {
@@ -192,12 +189,6 @@ export function visibleCards(state: BoardState, column: Column): Card[] {
   );
 }
 
-export function archivedCards(state: BoardState): Card[] {
-  return state.cards
-    .filter((card) => card.archivedAt != null)
-    .sort((a, b) => (b.archivedAt ?? 0) - (a.archivedAt ?? 0));
-}
-
 export function setView(state: BoardState, view: View): BoardState {
   return { ...state, view };
 }
@@ -208,10 +199,6 @@ export function setPinned(state: BoardState, pinned: boolean): BoardState {
 
 export function setNarrowColumn(state: BoardState, column: Column): BoardState {
   return { ...state, narrowColumn: column };
-}
-
-export function setAutostartEnabled(state: BoardState, enabled: boolean): BoardState {
-  return { ...state, autostartEnabled: enabled };
 }
 
 export function remainingMs(timer: TimerState, now = Date.now()): number {

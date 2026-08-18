@@ -43,6 +43,7 @@ export function mountTimer(store: Store, onComplete: () => void): void {
   });
 
   let completedFor: number | null = null;
+  let refreshTimer: number | null = null;
 
   function paint(now = Date.now()) {
     const { timer } = store.state;
@@ -66,9 +67,27 @@ export function mountTimer(store: Store, onComplete: () => void): void {
         onComplete();
       }
     }
+
+    scheduleRefresh(now);
   }
 
   store.subscribe(() => paint());
   paint();
-  window.setInterval(() => paint(), 200);
+
+  function scheduleRefresh(now: number) {
+    if (refreshTimer !== null) {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = null;
+    }
+    if (!store.state.timer.running) return;
+
+    const rem = remainingMs(store.state.timer, now);
+    if (rem <= 0) return;
+
+    const untilNextSecond = Math.max(1, 1000 - (now % 1000));
+    refreshTimer = window.setTimeout(() => {
+      refreshTimer = null;
+      paint();
+    }, Math.min(rem, untilNextSecond));
+  }
 }

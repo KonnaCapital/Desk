@@ -7,13 +7,52 @@ import {
   emptyState,
   isFinished,
   moveCard,
+  parseState,
   pauseTimer,
   remainingMs,
   resetTimer,
   startTimer,
   visibleCards,
 } from "./model.ts";
-import { Store, createMemoryPersist } from "./store.ts";
+import { Store, createMemoryPersist, type Persist } from "./store.ts";
+import { mountTimer } from "./timer.ts";
+
+function snapshotPersist(
+  primary: string | null = null,
+  backup: string | null = null,
+): Persist {
+  let currentPrimary = primary;
+  let currentBackup = backup;
+  const persist = {
+    dataPath: "test-data/board.json",
+    get primary() {
+      return currentPrimary;
+    },
+    get backup() {
+      return currentBackup;
+    },
+    async load() {
+      return { primary: currentPrimary, backup: currentBackup } as unknown as string | null;
+    },
+    async save(json: string) {
+      if (currentPrimary !== null) currentBackup = currentPrimary;
+      currentPrimary = json;
+    },
+  } as Persist & { primary: string | null; backup: string | null };
+  return persist;
+}
+
+function persistenceOf(store: Store): {
+  status: "saved" | "saving" | "error" | "recovered";
+  error: string | null;
+  dataPath: string;
+} {
+  return (store as unknown as { persistence: {
+    status: "saved" | "saving" | "error" | "recovered";
+    error: string | null;
+    dataPath: string;
+  } }).persistence;
+}
 
 describe("addToInbox", () => {
   it("creates a card in inbox", () => {
@@ -104,5 +143,190 @@ describe("Store", () => {
     assert.equal(reloaded.state.cards.length, 1);
     assert.equal(reloaded.state.cards[0].text, "remember this");
     assert.equal(reloaded.state.cards[0].column, "inbox");
+  });
+
+  it("ignores the removed autostart field when loading old JSON", () => {
+    const state = parseState({
+      ...emptyState(),
+      autostartEnabled: true,
+    } as unknown as Record<string, unknown>);
+    assert.equal("autostartEnabled" in state, false);
+    assert.equal(state.version, 1);
+  });
+
+  it("serializes overlapping flushes and leaves the latest state last", async () => {
+    let releaseFirst!: () => void;
+    const firstSave = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let active = 0;
+    let maxActive = 0;
+    const saves: string[] = [];
+    const persist = {
+      dataPath: "test-data/board.json",
+      async load() {
+        return { primary: null, backup: null } as unknown as string | null;
+      },
+      async save(json: string) {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        saves.push(json);
+        if (saves.length === 1) await firstSave;
+        active -= 1;
+      },
+    } as Persist;
+    const store = await Store.load(persist);
+
+    store.addToInbox("first");
+    const firstFlush = store.flush();
+    store.addToInbox("latest");
+    const secondFlush = store.flush();
+    releaseFirst();
+    await Promise.all([firstFlush, secondFlush]);
+
+    assert.equal(maxActive, 1);
+    assert.equal(JSON.parse(saves.at(-1)!).cards[0].text, "latest");
+  });
+
+  it("keeps the previous successful JSON as backup", async () => {
+    const persist = snapshotPersist();
+    const store = await Store.load(persist);
+    store.addToInbox("first");
+    await store.flush();
+    const first = JSON.stringify(store.state, null, 2);
+
+    store.setPinned(false);
+    await store.flush();
+
+    const files = persist as unknown as { primary: string; backup: string };
+    assert.equal(files.backup, first);
+    assert.equal(JSON.parse(files.primary).pinned, false);
+  });
+
+  it("recovers from a malformed primary using valid backup JSON", async () => {
+    const backupState = JSON.stringify({ ...emptyState(), pinned: false });
+    const store = await Store.load(snapshotPersist("{ malformed", backupState));
+
+    assert.equal(store.state.pinned, false);
+    assert.equal(persistenceOf(store).status, "recovered");
+  });
+
+  it("preserves the valid backup when saving after primary recovery", async () => {
+    const backupState = JSON.stringify({ ...emptyState(), pinned: false });
+    const persist = createMemoryPersist("{ malformed", backupState);
+    const store = await Store.load(persist);
+    store.setPinned(true);
+    await store.flush();
+
+    assert.equal(persist.backup, backupState);
+    assert.equal(JSON.parse(persist.primary!).pinned, true);
+  });
+
+  it("blocks automatic writes when primary and backup are both corrupt", async () => {
+    const persist = snapshotPersist("{ malformed", "[ malformed");
+    const store = await Store.load(persist);
+    const before = persist as unknown as { primary: string; backup: string };
+
+    assert.equal(persistenceOf(store).status, "error");
+    store.addToInbox("must not overwrite corrupt files");
+    await store.flush();
+
+    assert.equal(before.primary, "{ malformed");
+    assert.equal(before.backup, "[ malformed");
+  });
+
+  it("blocks writes when loading persistence returns an invalid shape", async () => {
+    const persist = {
+      dataPath: "test-data/board.json",
+      async load() {
+        return undefined as unknown as string | null;
+      },
+      async save() {
+        throw new Error("must not write");
+      },
+    } as Persist;
+    const store = await Store.load(persist);
+
+    assert.equal(persistenceOf(store).status, "error");
+    store.addToInbox("must not write");
+    await store.flush();
+    assert.equal(store.state.cards.length, 1);
+  });
+
+  it("reports save failures without throwing into event handlers", async () => {
+    const persist = {
+      dataPath: "test-data/board.json",
+      async load() {
+        return { primary: null, backup: null } as unknown as string | null;
+      },
+      async save() {
+        throw new Error("secret backend details");
+      },
+    } as Persist;
+    const store = await Store.load(persist);
+
+    store.addToInbox("failure");
+    await assert.doesNotReject(() => store.flush());
+
+    const status = persistenceOf(store);
+    assert.equal(status.status, "error");
+    assert.equal(status.dataPath, "test-data/board.json");
+    assert.ok(status.error);
+    assert.equal(status.error.includes("secret backend details"), false);
+  });
+});
+
+describe("timer refresh scheduling", () => {
+  it("does not schedule a refresh while stopped", () => {
+    const originalDocument = (globalThis as { document?: unknown }).document;
+    const originalWindow = (globalThis as { window?: unknown }).window;
+    let intervalCalls = 0;
+    const elements = new Map<string, Record<string, unknown>>();
+    for (const selector of [
+      "#clock-digits",
+      "#clock-progress-fill",
+      "#clock-presets",
+      "#custom-duration",
+      "#hours-input",
+      "#mins-input",
+      "#timer-toggle",
+      "#timer-reset",
+    ]) {
+      elements.set(selector, {
+        innerHTML: "",
+        textContent: "",
+        dataset: {},
+        style: {},
+        classList: { toggle() {} },
+        addEventListener() {},
+        querySelectorAll() { return []; },
+      });
+    }
+    (globalThis as { document?: unknown }).document = {
+      body: { dataset: {} },
+      querySelector(selector: string) {
+        return elements.get(selector);
+      },
+    };
+    (globalThis as { window?: unknown }).window = {
+      setInterval() {
+        intervalCalls += 1;
+        return 1;
+      },
+      clearInterval() {},
+      setTimeout() { return 1; },
+      clearTimeout() {},
+    };
+
+    try {
+      const store = new Store(snapshotPersist(), emptyState());
+      mountTimer(store, () => {});
+      assert.equal(intervalCalls, 0);
+    } finally {
+      if (originalDocument === undefined) delete (globalThis as { document?: unknown }).document;
+      else (globalThis as { document?: unknown }).document = originalDocument;
+      if (originalWindow === undefined) delete (globalThis as { window?: unknown }).window;
+      else (globalThis as { window?: unknown }).window = originalWindow;
+    }
   });
 });

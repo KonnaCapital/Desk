@@ -18,50 +18,211 @@ import {
   startTimer as startTimerModel,
 } from "./model.ts";
 
-export type Persist = {
-  load(): Promise<string | null>;
-  save(json: string): Promise<void>;
+export type PersistSnapshot = {
+  primary: string | null;
+  backup: string | null;
+  dataPath?: string;
 };
 
-export function createMemoryPersist(initial?: string): Persist {
-  let data = initial ?? null;
+/**
+ * The string/null load shape is retained for small browser integrations. The
+ * app persistence implementations use PersistSnapshot so both files are
+ * available to the recovery boundary.
+ */
+export type PersistLoad = PersistSnapshot | string | null;
+
+export type Persist = {
+  load(): Promise<PersistLoad>;
+  save(json: string): Promise<void>;
+  readonly dataPath?: string;
+};
+
+export type PersistenceStatus = "saved" | "saving" | "error" | "recovered";
+
+export type PersistenceState = {
+  status: PersistenceStatus;
+  error: string | null;
+  dataPath: string;
+};
+
+export type MemoryPersist = Persist & {
+  readonly primary: string | null;
+  readonly backup: string | null;
+};
+
+export function createMemoryPersist(
+  initial?: string,
+  initialBackup?: string,
+): MemoryPersist {
+  let primary = initial ?? null;
+  let backup = initialBackup ?? null;
+  const dataPath = "memory://board.json";
   return {
+    dataPath,
+    get primary() {
+      return primary;
+    },
+    get backup() {
+      return backup;
+    },
     async load() {
-      return data;
+      return { primary, backup, dataPath };
     },
     async save(json: string) {
-      data = json;
+      if (primary !== null && isJson(primary)) backup = primary;
+      primary = json;
     },
   };
 }
 
+type StoreOptions = {
+  persistence?: PersistenceState;
+  writesBlocked?: boolean;
+};
+
+type DecodedState =
+  | { kind: "missing" }
+  | { kind: "malformed" }
+  | { kind: "valid"; state: BoardState };
+
+function decode(raw: string | null): DecodedState {
+  if (raw === null) return { kind: "missing" };
+  try {
+    return { kind: "valid", state: parseState(JSON.parse(raw)) };
+  } catch {
+    return { kind: "malformed" };
+  }
+}
+
+function snapshotOf(loaded: PersistLoad, fallbackPath: string): PersistSnapshot {
+  if (typeof loaded === "string" || loaded === null) {
+    return { primary: loaded, backup: null, dataPath: fallbackPath };
+  }
+  return {
+    primary: typeof loaded.primary === "string" ? loaded.primary : null,
+    backup: typeof loaded.backup === "string" ? loaded.backup : null,
+    dataPath: loaded.dataPath ?? fallbackPath,
+  };
+}
+
+function loadError(dataPath: string): string {
+  return `Desk data could not be loaded safely. Data path: ${dataPath}`;
+}
+
+function saveError(dataPath: string): string {
+  return `Desk data could not be saved. Data path: ${dataPath}`;
+}
+
+function isJson(raw: string): boolean {
+  try {
+    JSON.parse(raw);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export class Store {
   state: BoardState;
+  persistence: PersistenceState;
   private persist: Persist;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private listeners = new Set<() => void>();
+  private writesBlocked: boolean;
+  private revision = 0;
+  private lastQueuedRevision = 0;
+  private lastSavedRevision = 0;
+  private saveChain: Promise<void> = Promise.resolve();
 
-  constructor(persist: Persist, state: BoardState) {
+  constructor(
+    persist: Persist,
+    state: BoardState,
+    options: StoreOptions = {},
+  ) {
     this.persist = persist;
     this.state = state;
+    this.writesBlocked = options.writesBlocked ?? false;
+    this.persistence = options.persistence ?? {
+      status: "saved",
+      error: null,
+      dataPath: persist.dataPath ?? "board.json",
+    };
   }
 
   static async load(persist: Persist): Promise<Store> {
-    let raw: string | null = null;
+    const fallbackPath = persist.dataPath ?? "board.json";
+    let loaded: PersistLoad;
     try {
-      raw = await persist.load();
+      loaded = await persist.load();
     } catch {
-      raw = null;
+      return new Store(persist, emptyState(), {
+        writesBlocked: true,
+        persistence: {
+          status: "error",
+          error: loadError(fallbackPath),
+          dataPath: fallbackPath,
+        },
+      });
     }
-    let parsed: unknown = null;
-    if (raw) {
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        parsed = null;
-      }
+
+    let snapshot: PersistSnapshot;
+    try {
+      snapshot = snapshotOf(loaded, fallbackPath);
+    } catch {
+      return new Store(persist, emptyState(), {
+        writesBlocked: true,
+        persistence: {
+          status: "error",
+          error: loadError(fallbackPath),
+          dataPath: fallbackPath,
+        },
+      });
     }
-    return new Store(persist, parsed ? parseState(parsed) : emptyState());
+    const primary = decode(snapshot.primary);
+    if (primary.kind === "valid") {
+      return new Store(persist, primary.state, {
+        persistence: {
+          status: "saved",
+          error: null,
+          dataPath: snapshot.dataPath ?? fallbackPath,
+        },
+      });
+    }
+
+    const backup = decode(snapshot.backup);
+    if (backup.kind === "valid") {
+      return new Store(persist, backup.state, {
+        persistence: {
+          status: "recovered",
+          error: null,
+          dataPath: snapshot.dataPath ?? fallbackPath,
+        },
+      });
+    }
+
+    if (primary.kind === "malformed" || backup.kind === "malformed") {
+      return new Store(persist, emptyState(), {
+        writesBlocked: true,
+        persistence: {
+          status: "error",
+          error: loadError(snapshot.dataPath ?? fallbackPath),
+          dataPath: snapshot.dataPath ?? fallbackPath,
+        },
+      });
+    }
+
+    return new Store(persist, emptyState(), {
+      persistence: {
+        status: "saved",
+        error: null,
+        dataPath: snapshot.dataPath ?? fallbackPath,
+      },
+    });
+  }
+
+  /** The status object consumed by the chrome/settings surfaces. */
+  get persistenceStatus(): PersistenceState {
+    return this.persistence;
   }
 
   subscribe(fn: () => void): () => void {
@@ -73,17 +234,64 @@ export class Store {
     for (const fn of this.listeners) fn();
   }
 
+  private setPersistence(
+    status: PersistenceStatus,
+    error: string | null = null,
+  ) {
+    this.persistence = {
+      status,
+      error,
+      dataPath: this.persistence.dataPath,
+    };
+    this.emit();
+  }
+
   private commit(next: BoardState) {
     this.state = next;
+    this.revision += 1;
     this.emit();
     this.scheduleSave();
   }
 
   private scheduleSave() {
+    if (this.writesBlocked) return;
+    this.setPersistence("saving");
     if (this.saveTimer) clearTimeout(this.saveTimer);
     this.saveTimer = setTimeout(() => {
+      this.saveTimer = null;
       void this.flush();
     }, 200);
+  }
+
+  private enqueueSave(): Promise<void> {
+    if (this.writesBlocked || this.revision <= this.lastQueuedRevision) {
+      return this.saveChain;
+    }
+
+    const revision = this.revision;
+    const json = JSON.stringify(this.state, null, 2);
+    this.lastQueuedRevision = revision;
+    this.setPersistence("saving");
+
+    const job = this.saveChain.then(async () => {
+      if (this.writesBlocked) return;
+      try {
+        await this.persist.save(json);
+        this.lastSavedRevision = Math.max(this.lastSavedRevision, revision);
+        if (this.lastSavedRevision >= this.revision) {
+          this.setPersistence("saved");
+        } else {
+          this.setPersistence("saving");
+        }
+      } catch {
+        if (this.lastQueuedRevision === revision) {
+          this.lastQueuedRevision = this.lastSavedRevision;
+        }
+        this.setPersistence("error", saveError(this.persistence.dataPath));
+      }
+    });
+    this.saveChain = job.catch(() => undefined);
+    return this.saveChain;
   }
 
   async flush(): Promise<void> {
@@ -91,7 +299,13 @@ export class Store {
       clearTimeout(this.saveTimer);
       this.saveTimer = null;
     }
-    await this.persist.save(JSON.stringify(this.state, null, 2));
+    if (this.writesBlocked) return;
+
+    while (true) {
+      const targetRevision = this.revision;
+      await this.enqueueSave();
+      if (this.revision <= targetRevision) return;
+    }
   }
 
   addToInbox(text: string) {
@@ -147,24 +361,31 @@ export async function createTauriPersist(): Promise<Persist> {
   const { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } =
     await import("@tauri-apps/plugin-fs");
   const file = "board.json";
+  const backupFile = "board.backup.json";
   const opts = { baseDir: BaseDirectory.AppLocalData };
+  const dataPath = "AppLocalData/board.json";
+  let previousPrimary: string | null = null;
+
+  async function readOptional(path: string): Promise<string | null> {
+    if (!(await exists(path, opts))) return null;
+    return readTextFile(path, opts);
+  }
 
   return {
+    dataPath,
     async load() {
-      try {
-        if (!(await exists(file, opts))) return null;
-        return await readTextFile(file, opts);
-      } catch {
-        return null;
-      }
+      const primary = await readOptional(file);
+      const backup = await readOptional(backupFile);
+      previousPrimary = primary !== null && isJson(primary) ? primary : null;
+      return { primary, backup, dataPath };
     },
     async save(json: string) {
-      try {
-        await mkdir(".", { ...opts, recursive: true });
-      } catch {
-        // AppLocalData already exists after first launch.
+      await mkdir(".", { ...opts, recursive: true });
+      if (previousPrimary !== null) {
+        await writeTextFile(backupFile, previousPrimary, opts);
       }
       await writeTextFile(file, json, opts);
+      previousPrimary = json;
     },
   };
 }
