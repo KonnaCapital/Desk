@@ -5,10 +5,10 @@
   "description": "A local kanban and timer for the desktop",
   "author": "KonnaCapital",
   "license": "MIT",
-  "homepage": "https://github.com/KonnaCapital/desk",
+  "homepage": "https://github.com/KonnaCapital/Desk",
   "repository": {
     "type": "git",
-    "url": "https://github.com/KonnaCapital/desk.git"
+    "url": "https://github.com/KonnaCapital/Desk.git"
   },
   "type": "module",
   "scripts": {

@@ -31,7 +31,7 @@
     "active": true,
     "targets": ["nsis", "dmg"],
     "publisher": "KonnaCapital",
-    "homepage": "https://github.com/KonnaCapital/desk",
+    "homepage": "https://github.com/KonnaCapital/Desk",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

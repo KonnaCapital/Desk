@@ -1,102 +1,31 @@
 # Desk
 
-Desk is a small, local-first kanban and timer for the desktop. It stores the
-board on this machine: there is no account, cloud sync, updater, or telemetry.
+Two things on your desktop: a local kanban and a pin-able timer.
 
-## Downloads
+It saves on this machine. No account, no phone, no cloud. Pin it to the corner when everything else is loud. It does not try to be a second brain.
 
-- [Windows x64 NSIS installer](https://github.com/KonnaCapital/desk/releases/latest/download/Desk-Windows-x64-Setup.exe)
-- [macOS releases (signed/notarized only)](https://github.com/KonnaCapital/desk/releases)
-- [SHA256 checksums](https://github.com/KonnaCapital/desk/releases/latest/download/SHA256SUMS)
+## Get it
 
-Release automation creates a draft first. A maintainer must inspect and publish
-that draft; the links above are for the latest published release.
+[Download for Windows](https://github.com/KonnaCapital/Desk/releases/latest) · [Source](https://github.com/KonnaCapital/Desk)
 
-## Status and platform notes
+Windows may warn that the installer is unsigned. Choose **More info**, then **Run anyway**.
 
-Desk v0.1 is a preview release. The Windows x64 NSIS package is configured for
-a current-user install and English or Finnish installer text. Unless the
-repository has been configured with the documented Windows certificate secrets,
-the installer is unsigned and Windows SmartScreen may show a warning.
+The same page: [konnacapital.github.io/desk](https://konnacapital.github.io/desk). Finnish and English follow the computer language. Columns stay Inbox / Today / To Do / Done.
 
-The macOS universal (Apple Silicon + Intel) DMG is configured in CI, but stable
-macOS support is not claimed yet. A stable Mac release still requires a real
-macOS build and runtime check, Developer ID signing, and notarization. Treat a
-Mac DMG without those checks as a preview.
+## Use it
 
-## Maintainer release secrets
+Capture into Inbox. Move cards to Today, To Do, Done. The clock is 25 minutes, an hour, two hours, or your own time. Pin it. Shrink it to the edge of the screen.
 
-Tag releases create one draft from the Windows job. The macOS job waits for
-that draft and uploads a stable `Desk-macOS-Universal.dmg` only when all of the
-following GitHub Actions secrets are configured: `APPLE_CERTIFICATE` (base64
-PKCS#12), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`,
-`APPLE_PASSWORD`, `APPLE_TEAM_ID`, and `KEYCHAIN_PASSWORD`. The signing
-identity must begin with `Developer ID Application:`; Apple Distribution is
-rejected for a direct-download DMG. The workflow validates notarization before
-uploading the stable asset.
+Settings has one switch: launch at login. Turn it off before you uninstall if you used it.
 
-If those macOS secrets are absent, CI uses ad-hoc identity `-` and uploads only
-the Actions artifact `Desk-macOS-Universal-PREVIEW.dmg`; it does not attach
-that preview to the release. Windows signing is optional and uses
-`WINDOWS_CERTIFICATE` (base64 PKCS#12), `WINDOWS_CERTIFICATE_PASSWORD`,
-`WINDOWS_CERTIFICATE_THUMBPRINT`, and `WINDOWS_TIMESTAMP_URL`. Never put
-secret values in this repository or in an issue.
+## Remove it
 
-## Local data
+Uninstall from Windows Settings. Your cards stay unless you choose to delete app data. To remove everything, also delete `%LOCALAPPDATA%\com.konnacapital.desk`.
 
-Desk writes `board.json` and, when available, `board.backup.json` under Tauri's
-`AppLocalData` directory for the `com.konnacapital.desk` identifier:
+## Contribute
 
-- Windows: `%LOCALAPPDATA%\com.konnacapital.desk`
-- macOS: `~/Library/Application Support/com.konnacapital.desk`
-
-Normal uninstall keeps this data. On Windows, the NSIS hook removes only Desk's
-`HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Desk` autostart value.
-The installer's **Delete App Data** option is explicit and opt-in.
-
-To remove everything on Windows, quit Desk, uninstall it from **Settings → Apps
-→ Installed apps**, then delete `%LOCALAPPDATA%\com.konnacapital.desk` if it
-still exists. To remove everything on macOS, first open Desk **Settings** and
-turn off **Launch Desk at login**. Then quit Desk, move `Desk.app` to the Trash,
-and delete `~/Library/Application Support/com.konnacapital.desk`.
-
-If the Mac setting cannot be opened, the official autostart plugin's Launch
-Agent fallback is derived under `~/Library/LaunchAgents/{app_name}.plist`.
-Inspect that directory and the candidate plist's `Label` and `ProgramArguments`
-before removing only the Desk entry. The exact Desk filename is not proven on
-this Windows host and must be confirmed in the real-Mac gate; do not assume a
-filename or delete unrelated LaunchAgent plists.
-
-## Development
-
-Requirements: Node.js 22 or newer, npm, and the Rust toolchain used by Tauri.
-
-```text
-npm ci
-npm test
-npm run build
-cargo check --locked --manifest-path src-tauri/Cargo.toml
-```
-
-To build a Windows NSIS package locally:
-
-```text
-npm run tauri build -- --bundles nsis
-```
-
-The macOS universal build is CI-configured with:
-
-```text
-npm run tauri build -- --target universal-apple-darwin --bundles dmg
-```
-
-## Contributions and security
-
-Keep pull requests to one idea, run the required checks, and include before
-and after screenshots for UI changes. Explain why every new dependency is
-needed and update the lockfile. See [CONTRIBUTING.md](CONTRIBUTING.md) and
-[SECURITY.md](SECURITY.md).
+The door is open. One idea per pull request. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-Desk is released under the MIT License. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
