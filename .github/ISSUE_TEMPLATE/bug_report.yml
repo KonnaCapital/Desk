@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a reproducible problem with Desk
+title: "bug: "
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Desk version or commit
+      description: Use the release version or short commit hash.
+      placeholder: 0.1.0 or abc1234
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux (development only)
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the observable problem without private board data.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest reliable sequence of actions.
+      placeholder: |
+        1. Start Desk
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual result
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Remove credentials, personal data, local paths, and board contents.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I have removed secrets, personal data, and private board contents.
+          required: true

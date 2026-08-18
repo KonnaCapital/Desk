@@ -6,40 +6,188 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  publish-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
+  build:
+    name: Build ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Windows x64 NSIS
+            os: windows-latest
+            args: --config src-tauri/tauri.windows.conf.json --bundles nsis
+            asset_pattern: Desk-Windows-x64-Setup[ext]
+            artifact_name: Desk-Windows-x64-Setup.exe
+          - label: macOS Universal DMG
+            os: macos-latest
+            args: --target universal-apple-darwin --bundles dmg
+            asset_pattern: Desk-macOS-Universal[ext]
+            artifact_name: Desk-macOS-Universal.dmg
 
-      - uses: actions/setup-node@v4
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          workspaces: src-tauri -> target
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Install frontend dependencies
         run: npm ci
 
-      - uses: tauri-apps/tauri-action@v0
+      - name: Import Windows signing certificate when configured
+        if: runner.os == 'Windows'
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          WINDOWS_CERTIFICATE_THUMBPRINT: ${{ secrets.WINDOWS_CERTIFICATE_THUMBPRINT }}
+          WINDOWS_TIMESTAMP_URL: ${{ secrets.WINDOWS_TIMESTAMP_URL }}
+        shell: pwsh
+        run: |
+          $overlay = @{ bundle = @{ windows = @{} } }
+          $hasSigning = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE) -and
+            -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_PASSWORD) -and
+            -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_THUMBPRINT) -and
+            -not [string]::IsNullOrWhiteSpace($env:WINDOWS_TIMESTAMP_URL)
+
+          if ($hasSigning) {
+            New-Item -ItemType Directory -Force -Path certificate | Out-Null
+            try {
+              Set-Content -NoNewline -Path certificate/tempCert.txt -Value $env:WINDOWS_CERTIFICATE
+              certutil -decode certificate/tempCert.txt certificate/certificate.pfx | Out-Host
+              $password = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
+              Import-PfxCertificate -FilePath certificate/certificate.pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password | Out-Null
+
+              $overlay.bundle.windows = @{
+                certificateThumbprint = $env:WINDOWS_CERTIFICATE_THUMBPRINT
+                digestAlgorithm = 'sha256'
+                timestampUrl = $env:WINDOWS_TIMESTAMP_URL
+              }
+            }
+            finally {
+              Remove-Item -LiteralPath certificate -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          }
+
+          $overlay | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 src-tauri/tauri.windows.conf.json
+
+      - name: Import Apple signing certificate when configured
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${APPLE_CERTIFICATE:-}" || -z "${APPLE_CERTIFICATE_PASSWORD:-}" || -z "${KEYCHAIN_PASSWORD:-}" ]]; then
+            echo "Apple signing secrets are not configured; building an unsigned preview DMG."
+            exit 0
+          fi
+
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          rm -f certificate.p12
+
+          identity="$(security find-identity -v -p codesigning build.keychain | awk -F'"' '/Developer ID Application|Apple Distribution/{print $2; exit}')"
+          if [[ -z "$identity" ]]; then
+            echo "No usable Apple signing identity was found in the imported keychain." >&2
+            exit 1
+          fi
+          echo "APPLE_SIGNING_IDENTITY=$identity" >> "$GITHUB_ENV"
+          if [[ -n "${APPLE_ID:-}" && -n "${APPLE_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
+            {
+              echo "APPLE_ID=$APPLE_ID"
+              echo "APPLE_PASSWORD=$APPLE_PASSWORD"
+              echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"
+            } >> "$GITHUB_ENV"
+          fi
+
+      - name: Build and upload draft release asset
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__
-          releaseName: Desk v__VERSION__
-          releaseBody: |
-            Desk is two things on your desktop: a local kanban and a pin-able timer.
-
-            Download `Desk_*_x64-setup.exe`. The installer is unsigned. Windows may say it protected your PC — More info, then Run anyway.
-
-            Source is in this repository.
+          tagName: ${{ github.ref_name }}
+          releaseName: Desk ${{ github.ref_name }}
+          releaseBody: See SHA256SUMS and the README for installation and signing notes.
           releaseDraft: true
           prerelease: false
-          args: --bundles nsis
+          retryAttempts: 3
+          uploadUpdaterJson: false
+          uploadUpdaterSignatures: false
+          releaseAssetNamePattern: ${{ matrix.asset_pattern }}
+          args: ${{ matrix.args }}
+
+      - name: Stage Windows installer for checksum manifest
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $source = Get-ChildItem -LiteralPath src-tauri/target/release/bundle/nsis -Filter '*-setup.exe' -File |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($null -eq $source) { throw 'NSIS installer was not produced.' }
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+          Copy-Item -LiteralPath $source.FullName -Destination release-assets/Desk-Windows-x64-Setup.exe
+
+      - name: Stage macOS DMG for checksum manifest
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dmg_path="$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          [[ -n "$dmg_path" ]]
+          mkdir -p release-assets
+          cp "$dmg_path" release-assets/Desk-macOS-Universal.dmg
+
+      - name: Upload staged installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: release-assets/${{ matrix.artifact_name }}
+          if-no-files-found: error
+
+  checksums:
+    name: Publish SHA256SUMS to draft
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download staged installers
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create checksum manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          sha256sum Desk-Windows-x64-Setup.exe Desk-macOS-Universal.dmg > SHA256SUMS
+
+      - name: Upload checksum manifest to the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: gh release upload "${GITHUB_REF_NAME}" release-assets/SHA256SUMS --clobber --repo "${GITHUB_REPOSITORY}"

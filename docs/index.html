@@ -3,44 +3,75 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Desk</title>
-    <meta name="description" content="Desk is two things on your desktop: a local kanban and a pin-able timer." />
+    <title>Desk — local kanban and timer</title>
+    <meta name="description" content="Desk is a local kanban and timer for the desktop." />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main>
       <p class="name">Desk</p>
-      <h1 data-i18n="lede">Two things on your desktop: a local kanban and a pin-able timer.</h1>
-      <p class="sub" data-i18n="sub">It saves on this machine. No account, no phone, no cloud. Pin it to the corner when everything else is loud.</p>
-      <p class="actions">
-        <a class="download" data-i18n="download" href="https://github.com/KonnaCapital/desk/releases/latest/download/Desk_0.1.0_x64-setup.exe">Download for Windows</a>
-        <a class="source" data-i18n="source" href="https://github.com/KonnaCapital/desk">Source</a>
-      </p>
-      <p class="note" data-i18n="smartscreen">The installer is unsigned. Windows may say it protected your PC — choose More info, then Run anyway.</p>
+
+      <section id="english" lang="en">
+        <h1>Two things on your desktop: a local kanban and a pin-able timer.</h1>
+        <p class="sub">Desk saves on this machine. No account, no phone, no cloud. Pin it to the corner when everything else is loud.</p>
+        <p class="actions">
+          <a class="download" href="https://github.com/KonnaCapital/desk/releases/latest/download/Desk-Windows-x64-Setup.exe">Download for Windows</a>
+          <a class="download secondary" href="https://github.com/KonnaCapital/desk/releases/latest/download/Desk-macOS-Universal.dmg">Download macOS DMG (preview)</a>
+          <a class="source" href="https://github.com/KonnaCapital/desk/releases/latest/download/SHA256SUMS">SHA256 checksums</a>
+          <a class="source" href="https://github.com/KonnaCapital/desk">Source</a>
+        </p>
+
+        <section class="details">
+          <h2>Before you install</h2>
+          <p><strong>Windows:</strong> the x64 NSIS installer uses a current-user install and includes English and Finnish text. It is unsigned unless the maintainer has configured the documented certificate secrets, so SmartScreen may warn.</p>
+          <p><strong>macOS:</strong> the universal Apple Silicon + Intel DMG is configured in CI, but stable Mac support remains unverified until a real macOS runtime check, Developer ID signing, and notarization. Treat this download as a preview.</p>
+
+          <h2>Your data</h2>
+          <p>Desk keeps <code>board.json</code> and, when available, <code>board.backup.json</code> in:</p>
+          <ul>
+            <li>Windows: <code>%LOCALAPPDATA%\com.konnacapital.desk</code></li>
+            <li>macOS: <code>~/Library/Application Support/com.konnacapital.desk</code></li>
+          </ul>
+
+          <h2>Complete removal</h2>
+          <p><strong>Windows:</strong> quit Desk, uninstall it from Settings → Apps → Installed apps, then delete the Windows data folder above if it remains. The installer removes only Desk's own Run-key autostart value; Delete App Data is an explicit installer option.</p>
+          <p><strong>macOS:</strong> quit Desk, move <code>Desk.app</code> to the Trash, then delete the macOS data folder above.</p>
+        </section>
+      </section>
+
+      <section id="finnish" lang="fi" hidden>
+        <h1>Kaksi asiaa työpöydällä: paikallinen kanban ja pinattava ajastin.</h1>
+        <p class="sub">Desk tallentaa tälle koneelle. Ei tiliä, puhelinta, pilveä tai seurantaa. Kiinnitä se reunaan, kun kaikki muu on äänessä.</p>
+        <p class="actions">
+          <a class="download" href="https://github.com/KonnaCapital/desk/releases/latest/download/Desk-Windows-x64-Setup.exe">Lataa Windowsiin</a>
+          <a class="download secondary" href="https://github.com/KonnaCapital/desk/releases/latest/download/Desk-macOS-Universal.dmg">Lataa macOS DMG (esikatselu)</a>
+          <a class="source" href="https://github.com/KonnaCapital/desk/releases/latest/download/SHA256SUMS">SHA256-tarkistussummat</a>
+          <a class="source" href="https://github.com/KonnaCapital/desk">Lähdekoodi</a>
+        </p>
+
+        <section class="details">
+          <h2>Ennen asennusta</h2>
+          <p><strong>Windows:</strong> x64-NSIS-asennus on käyttäjäkohtainen ja sisältää englannin ja suomen. Asennin on allekirjoittamaton, ellei ylläpitäjä ole määrittänyt dokumentoituja varmenteita, joten SmartScreen voi varoittaa.</p>
+          <p><strong>macOS:</strong> Apple Silicon- ja Intel-koneille tarkoitettu DMG on määritetty CI:ssä, mutta Macin vakaa tuki on vielä varmistamatta. Tarvitaan oikea macOS-ajotesti, Developer ID -allekirjoitus ja notarisaatio. Käsittele latausta esikatseluna.</p>
+
+          <h2>Omat tietosi</h2>
+          <p>Desk säilyttää tiedostot <code>board.json</code> ja mahdollisen <code>board.backup.json</code> näissä kansioissa:</p>
+          <ul>
+            <li>Windows: <code>%LOCALAPPDATA%\com.konnacapital.desk</code></li>
+            <li>macOS: <code>~/Library/Application Support/com.konnacapital.desk</code></li>
+          </ul>
+
+          <h2>Poista kaikki</h2>
+          <p><strong>Windows:</strong> sulje Desk, poista se kohdasta Asetukset → Sovellukset → Asennetut sovellukset ja poista yllä oleva Windowsin datakansio, jos se jäi jäljelle. Asennin poistaa vain Deskille kuuluvan Run-avaimen automaattikäynnistyksen; Delete App Data on erikseen valittava asetus.</p>
+          <p><strong>macOS:</strong> sulje Desk, siirrä <code>Desk.app</code> roskakoriin ja poista yllä oleva macOS-datakansio.</p>
+        </section>
+      </section>
     </main>
     <script>
-      const fi = navigator.language.toLowerCase().startsWith("fi");
-      document.documentElement.lang = fi ? "fi" : "en";
-      const copy = {
-        en: {
-          lede: "Two things on your desktop: a local kanban and a pin-able timer.",
-          sub: "It saves on this machine. No account, no phone, no cloud. Pin it to the corner when everything else is loud.",
-          download: "Download for Windows",
-          source: "Source",
-          smartscreen: "The installer is unsigned. Windows may say it protected your PC — choose More info, then Run anyway.",
-        },
-        fi: {
-          lede: "Kaksi asiaa työpöydällä: paikallinen kanban ja pinattava ajastin.",
-          sub: "Tallentaa tälle koneelle. Ei tiliä, ei puhelinta, ei pilveä. Kiinnitä reunaan, kun kaikki muu on äänessä.",
-          download: "Lataa Windowsiin",
-          source: "Lähdekoodi",
-          smartscreen: "Asennin on allekirjoittamaton. Windows voi sanoa suojanneensa tietokoneen — valitse Lisätietoja ja sitten Suorita silti.",
-        },
-      }[fi ? "fi" : "en"];
-      for (const el of document.querySelectorAll("[data-i18n]")) {
-        const key = el.getAttribute("data-i18n");
-        if (key && copy[key]) el.textContent = copy[key];
-      }
+      const finnish = navigator.language.toLowerCase().startsWith("fi");
+      document.documentElement.lang = finnish ? "fi" : "en";
+      document.getElementById("english").hidden = finnish;
+      document.getElementById("finnish").hidden = !finnish;
     </script>
   </body>
 </html>
