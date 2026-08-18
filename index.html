@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Desk</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body data-view="board" data-size="lg" data-pinned="true">
+    <header class="chrome" data-tauri-drag-region>
+      <div class="chrome-left" data-tauri-drag-region>
+        <span class="app-name" data-tauri-drag-region>Desk</span>
+        <nav class="views">
+          <button type="button" id="view-board" class="view-btn active" data-i18n="board">Board</button>
+          <button type="button" id="view-clock" class="view-btn" data-i18n="clock">Clock</button>
+        </nav>
+      </div>
+      <div class="chrome-right" data-tauri-drag-region>
+        <button type="button" id="pin-btn" class="icon-btn active" data-i18n-title="pin" data-i18n-aria="pin" title="Pin" aria-label="Pin" aria-pressed="true">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M7 1.25a3.6 3.6 0 0 0-.4 7.18L7 12.7l.4-4.27A3.6 3.6 0 0 0 7 1.25zm0 5.35a1.4 1.4 0 1 1 0-2.8 1.4 1.4 0 0 1 0 2.8z" fill="currentColor"/>
+          </svg>
+        </button>
+        <button type="button" id="min-btn" class="icon-btn" data-i18n-title="minimize" data-i18n-aria="minimize" title="Minimize" aria-label="Minimize">–</button>
+        <button type="button" id="close-btn" class="icon-btn close" data-i18n-title="close" data-i18n-aria="close" title="Close" aria-label="Close">×</button>
+      </div>
+    </header>
+
+    <section id="board-view" class="view board-view">
+      <form id="capture-form" class="capture">
+        <input id="capture-input" data-i18n-placeholder="capture" placeholder="Capture" autocomplete="off" />
+      </form>
+      <div id="column-switch" class="column-switch"></div>
+      <div id="board" class="board"></div>
+      <div class="board-footer">
+        <button type="button" id="archive-done" data-i18n="archiveDone">Archive Done</button>
+        <button type="button" id="open-archive" data-i18n="archive">Archive</button>
+      </div>
+    </section>
+
+    <section id="clock-view" class="view clock-view hidden">
+      <div class="clock-face">
+        <button type="button" id="clock-digits" class="clock-digits" data-i18n-aria="toggleClock" aria-label="Start or pause the clock">25:00</button>
+        <div id="clock-presets" class="clock-presets"></div>
+        <form id="custom-duration" class="custom-duration">
+          <input id="hours-input" type="number" min="0" max="24" step="1" placeholder="0" data-i18n-aria="hours" aria-label="Hours" />
+          <span>h</span>
+          <input id="mins-input" type="number" min="0" max="59" step="1" placeholder="25" data-i18n-aria="minutes" aria-label="Minutes" />
+          <span>min</span>
+          <button type="submit" data-i18n="setDuration">Set</button>
+        </form>
+        <div class="clock-actions">
+          <button type="button" id="timer-toggle" class="primary" data-i18n="start">Start</button>
+          <button type="button" id="timer-reset" data-i18n="reset">Reset</button>
+        </div>
+      </div>
+      <div class="clock-progress" aria-hidden="true">
+        <div id="clock-progress-fill"></div>
+      </div>
+    </section>
+
+    <div id="archive-overlay" class="overlay hidden">
+      <div class="overlay-card">
+        <header>
+          <h2 data-i18n="archive">Archive</h2>
+          <button type="button" id="close-archive" data-i18n="archiveClose">Close</button>
+        </header>
+        <ul id="archive-list"></ul>
+      </div>
+    </div>
+  </body>
+</html>

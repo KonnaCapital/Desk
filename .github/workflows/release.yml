@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  publish-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Desk v__VERSION__
+          releaseBody: |
+            Desk is two things on your desktop: a local kanban and a pin-able timer.
+
+            Download `Desk_*_x64-setup.exe`. The installer is unsigned. Windows may say it protected your PC — More info, then Run anyway.
+
+            Source is in this repository.
+          releaseDraft: true
+          prerelease: false
+          args: --bundles nsis

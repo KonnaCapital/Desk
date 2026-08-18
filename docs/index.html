@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Desk</title>
+    <meta name="description" content="Desk is two things on your desktop: a local kanban and a pin-able timer." />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main>
+      <p class="name">Desk</p>
+      <h1 data-i18n="lede">Two things on your desktop: a local kanban and a pin-able timer.</h1>
+      <p class="sub" data-i18n="sub">It saves on this machine. No account, no phone, no cloud. Pin it to the corner when everything else is loud.</p>
+      <p class="actions">
+        <a class="download" data-i18n="download" href="https://github.com/KonnaCapital/desk/releases/latest/download/Desk_0.1.0_x64-setup.exe">Download for Windows</a>
+        <a class="source" data-i18n="source" href="https://github.com/KonnaCapital/desk">Source</a>
+      </p>
+      <p class="note" data-i18n="smartscreen">The installer is unsigned. Windows may say it protected your PC — choose More info, then Run anyway.</p>
+    </main>
+    <script>
+      const fi = navigator.language.toLowerCase().startsWith("fi");
+      document.documentElement.lang = fi ? "fi" : "en";
+      const copy = {
+        en: {
+          lede: "Two things on your desktop: a local kanban and a pin-able timer.",
+          sub: "It saves on this machine. No account, no phone, no cloud. Pin it to the corner when everything else is loud.",
+          download: "Download for Windows",
+          source: "Source",
+          smartscreen: "The installer is unsigned. Windows may say it protected your PC — choose More info, then Run anyway.",
+        },
+        fi: {
+          lede: "Kaksi asiaa työpöydällä: paikallinen kanban ja pinattava ajastin.",
+          sub: "Tallentaa tälle koneelle. Ei tiliä, ei puhelinta, ei pilveä. Kiinnitä reunaan, kun kaikki muu on äänessä.",
+          download: "Lataa Windowsiin",
+          source: "Lähdekoodi",
+          smartscreen: "Asennin on allekirjoittamaton. Windows voi sanoa suojanneensa tietokoneen — valitse Lisätietoja ja sitten Suorita silti.",
+        },
+      }[fi ? "fi" : "en"];
+      for (const el of document.querySelectorAll("[data-i18n]")) {
+        const key = el.getAttribute("data-i18n");
+        if (key && copy[key]) el.textContent = copy[key];
+      }
+    </script>
+  </body>
+</html>
