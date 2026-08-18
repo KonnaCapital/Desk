@@ -48,7 +48,7 @@ async function boot() {
   const persist = isTauri() ? await createTauriPersist() : createMemoryPersist();
   const store = await Store.load(persist);
 
-  mountChrome(store);
+  await mountChrome(store);
   mountBoard(store);
   mountTimer(store, () => {
     void notifyDone();

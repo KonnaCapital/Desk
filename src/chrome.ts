@@ -4,10 +4,12 @@ import {
   loadAutostartApi,
   type AutostartError,
 } from "./autostart.ts";
+import { registerCloseHandler, type CloseFlushResult } from "./close.ts";
 import { t } from "./i18n.ts";
+import { createModalController } from "./modal.ts";
 import type { PersistenceState, Store } from "./store.ts";
 
-export function mountChrome(store: Store): void {
+export async function mountChrome(store: Store): Promise<void> {
   const boardBtn = document.querySelector<HTMLButtonElement>("#view-board")!;
   const clockBtn = document.querySelector<HTMLButtonElement>("#view-clock")!;
   const pinBtn = document.querySelector<HTMLButtonElement>("#pin-btn")!;
@@ -23,16 +25,37 @@ export function mountChrome(store: Store): void {
   const clockView = document.querySelector<HTMLElement>("#clock-view")!;
   const chrome = document.querySelector<HTMLElement>(".chrome")!;
 
-  let nativeWindow: Awaited<ReturnType<typeof getWindow>> = null;
-  void getWindow().then((current) => {
-    nativeWindow = current;
-    if (current) void installCloseHandler(current, store);
-  });
+  let closeProtectionMessage: string | null = null;
+  const nativeWindow = await getWindow();
+  if (nativeWindow) {
+    const registration = await registerCloseHandler(
+      nativeWindow,
+      () => store.flush(),
+      (result: Exclude<CloseFlushResult, "flushed">) => {
+        closeProtectionMessage =
+          result === "timed-out"
+            ? t("persistenceCloseTimeout")
+            : t("persistenceCloseError");
+        applyPersistenceStatus(store.persistenceStatus);
+      },
+    );
+    if (!registration.registered) {
+      closeProtectionMessage = t("persistenceCloseRegistrationError");
+    }
+  }
 
   const autostartControllerPromise = loadAutostartApi()
     .then((api) => new AutostartController(api))
     .catch(() => new AutostartController(null));
   let autostartController: AutostartController | null = null;
+  const settingsModal = createModalController(
+    settingsBtn,
+    closeSettingsBtn,
+    (open) => {
+      settingsOverlay.classList.toggle("hidden", !open);
+      settingsBtn.setAttribute("aria-expanded", String(open));
+    },
+  );
 
   const beginDrag = (event: MouseEvent) => {
     if (event.button !== 0) return;
@@ -49,23 +72,27 @@ export function mountChrome(store: Store): void {
   pinBtn.addEventListener("click", () => store.setPinned(!store.state.pinned));
 
   settingsBtn.addEventListener("click", () => {
+    settingsModal.open(
+      document.activeElement instanceof HTMLElement ? document.activeElement : null,
+    );
     void openSettings();
   });
-  closeSettingsBtn.addEventListener("click", closeSettings);
+  closeSettingsBtn.addEventListener("click", () => settingsModal.close());
   settingsOverlay.addEventListener("click", (event) => {
-    if (event.target === settingsOverlay) closeSettings();
+    if (event.target === settingsOverlay) settingsModal.close();
+  });
+  document.addEventListener("keydown", (event) => {
+    settingsModal.handleKeyDown(event);
   });
   autostartToggle.addEventListener("change", () => {
     void changeAutostart();
   });
 
   minBtn.addEventListener("click", async () => {
-    const windowApi = await getWindow();
-    await windowApi?.minimize();
+    await nativeWindow?.minimize();
   });
   closeBtn.addEventListener("click", async () => {
-    const windowApi = await getWindow();
-    await windowApi?.close();
+    await nativeWindow?.close();
   });
 
   function applyView(view: View) {
@@ -103,8 +130,6 @@ export function mountChrome(store: Store): void {
   applyPersistenceStatus(store.persistenceStatus);
 
   async function openSettings() {
-    settingsOverlay.classList.remove("hidden");
-    settingsBtn.setAttribute("aria-expanded", "true");
     autostartToggle.disabled = true;
     autostartStatus.textContent = "";
 
@@ -119,11 +144,6 @@ export function mountChrome(store: Store): void {
         : t("settingsAutostartUnavailable");
   }
 
-  function closeSettings() {
-    settingsOverlay.classList.add("hidden");
-    settingsBtn.setAttribute("aria-expanded", "false");
-  }
-
   async function changeAutostart() {
     if (!autostartController) return;
     autostartToggle.disabled = true;
@@ -134,19 +154,19 @@ export function mountChrome(store: Store): void {
   }
 
   function applyPersistenceStatus(state: PersistenceState) {
-    const visible = state.status !== "saved";
-    persistenceStatus.classList.toggle("hidden", !visible);
-    persistenceStatus.dataset.status = state.status;
-    if (!visible) {
-      persistenceStatus.textContent = "";
-      return;
-    }
-    persistenceStatus.textContent =
-      state.status === "saving"
+    const message =
+      closeProtectionMessage ??
+      (state.status === "saving"
         ? t("persistenceSaving")
         : state.status === "recovered"
           ? t("persistenceRecovered")
-          : `${t("persistenceError")} ${state.dataPath}`;
+          : state.status === "error"
+            ? `${t("persistenceError")} ${state.dataPath}`
+            : null);
+    const visible = message !== null;
+    persistenceStatus.classList.toggle("hidden", !visible);
+    persistenceStatus.dataset.status = state.status;
+    persistenceStatus.textContent = message ?? "";
   }
 }
 
@@ -160,36 +180,6 @@ function autostartErrorMessage(error: AutostartError): string {
       return t("settingsAutostartChangeError");
     case "unavailable":
       return t("settingsAutostartUnavailable");
-  }
-}
-
-async function installCloseHandler(
-  current: NonNullable<Awaited<ReturnType<typeof getWindow>>>,
-  store: Store,
-): Promise<void> {
-  let closing = false;
-  try {
-    await current.onCloseRequested(async (event) => {
-      if (closing) {
-        event.preventDefault();
-        return;
-      }
-      closing = true;
-      event.preventDefault();
-      try {
-        await store.flush();
-      } catch {
-        // Store.flush keeps persistence failures in its status; never block close.
-      } finally {
-        try {
-          await current.destroy();
-        } catch {
-          closing = false;
-        }
-      }
-    });
-  } catch {
-    // Browser preview and unavailable native event APIs need no close hook.
   }
 }
 
