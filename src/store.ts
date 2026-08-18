@@ -98,10 +98,26 @@ function snapshotOf(loaded: PersistLoad, fallbackPath: string): PersistSnapshot 
   if (typeof loaded === "string" || loaded === null) {
     return { primary: loaded, backup: null, dataPath: fallbackPath };
   }
+  if (!loaded || typeof loaded !== "object") {
+    throw new Error("Invalid persistence envelope");
+  }
+  const candidate = loaded as unknown as Record<string, unknown>;
+  if (!("primary" in candidate) || !("backup" in candidate)) {
+    throw new Error("Invalid persistence envelope");
+  }
+  if (
+    (candidate.primary !== null && typeof candidate.primary !== "string") ||
+    (candidate.backup !== null && typeof candidate.backup !== "string") ||
+    ("dataPath" in candidate &&
+      candidate.dataPath !== undefined &&
+      typeof candidate.dataPath !== "string")
+  ) {
+    throw new Error("Invalid persistence envelope");
+  }
   return {
-    primary: typeof loaded.primary === "string" ? loaded.primary : null,
-    backup: typeof loaded.backup === "string" ? loaded.backup : null,
-    dataPath: loaded.dataPath ?? fallbackPath,
+    primary: candidate.primary as string | null,
+    backup: candidate.backup as string | null,
+    dataPath: (candidate.dataPath as string | undefined) ?? fallbackPath,
   };
 }
 
@@ -271,7 +287,6 @@ export class Store {
     const revision = this.revision;
     const json = JSON.stringify(this.state, null, 2);
     this.lastQueuedRevision = revision;
-    this.setPersistence("saving");
 
     const job = this.saveChain.then(async () => {
       if (this.writesBlocked) return;
@@ -357,13 +372,22 @@ export class Store {
   }
 }
 
-export async function createTauriPersist(): Promise<Persist> {
+export type TauriDataPathResolver = () => Promise<string>;
+
+export async function resolveTauriDataPath(): Promise<string> {
+  const { appLocalDataDir, join } = await import("@tauri-apps/api/path");
+  return join(await appLocalDataDir(), "board.json");
+}
+
+export async function createTauriPersist(
+  resolveDataPath: TauriDataPathResolver = resolveTauriDataPath,
+): Promise<Persist> {
   const { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } =
     await import("@tauri-apps/plugin-fs");
   const file = "board.json";
   const backupFile = "board.backup.json";
   const opts = { baseDir: BaseDirectory.AppLocalData };
-  const dataPath = "AppLocalData/board.json";
+  const dataPath = await resolveDataPath();
   let previousPrimary: string | null = null;
 
   async function readOptional(path: string): Promise<string | null> {

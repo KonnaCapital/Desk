@@ -14,7 +14,12 @@ import {
   startTimer,
   visibleCards,
 } from "./model.ts";
-import { Store, createMemoryPersist, type Persist } from "./store.ts";
+import {
+  Store,
+  createMemoryPersist,
+  createTauriPersist,
+  type Persist,
+} from "./store.ts";
 import { mountTimer } from "./timer.ts";
 
 function snapshotPersist(
@@ -47,11 +52,7 @@ function persistenceOf(store: Store): {
   error: string | null;
   dataPath: string;
 } {
-  return (store as unknown as { persistence: {
-    status: "saved" | "saving" | "error" | "recovered";
-    error: string | null;
-    dataPath: string;
-  } }).persistence;
+  return store.persistenceStatus;
 }
 
 describe("addToInbox", () => {
@@ -253,6 +254,46 @@ describe("Store", () => {
     assert.equal(store.state.cards.length, 1);
   });
 
+  it("blocks writes when a persistence envelope is incomplete", async () => {
+    let writes = 0;
+    const persist = {
+      dataPath: "test-data/board.json",
+      async load() {
+        return {} as unknown as string | null;
+      },
+      async save() {
+        writes += 1;
+      },
+    } as Persist;
+    const store = await Store.load(persist);
+
+    assert.equal(persistenceOf(store).status, "error");
+    store.addToInbox("must not overwrite an invalid envelope");
+    await store.flush();
+    assert.equal(writes, 0);
+  });
+
+  it("emits one saving transition for a pending change", async () => {
+    const store = await Store.load(createMemoryPersist());
+    const statuses: string[] = [];
+    store.subscribe(() => statuses.push(store.persistenceStatus.status));
+
+    store.addToInbox("one status");
+    await store.flush();
+
+    assert.equal(statuses.filter((status) => status === "saving").length, 1);
+  });
+
+  it("uses the resolved Tauri data path in its persistence boundary", async () => {
+    const resolveDataPath = async () => "C:/Desk/AppLocalData/board.json";
+    const createWithResolver = createTauriPersist as unknown as (
+      resolvePath: () => Promise<string>,
+    ) => Promise<Persist>;
+    const persist = await createWithResolver(resolveDataPath);
+
+    assert.equal(persist.dataPath, "C:/Desk/AppLocalData/board.json");
+  });
+
   it("reports save failures without throwing into event handlers", async () => {
     const persist = {
       dataPath: "test-data/board.json",
@@ -281,6 +322,7 @@ describe("timer refresh scheduling", () => {
     const originalDocument = (globalThis as { document?: unknown }).document;
     const originalWindow = (globalThis as { window?: unknown }).window;
     let intervalCalls = 0;
+    let timeoutCalls = 0;
     const elements = new Map<string, Record<string, unknown>>();
     for (const selector of [
       "#clock-digits",
@@ -314,7 +356,10 @@ describe("timer refresh scheduling", () => {
         return 1;
       },
       clearInterval() {},
-      setTimeout() { return 1; },
+      setTimeout() {
+        timeoutCalls += 1;
+        return 1;
+      },
       clearTimeout() {},
     };
 
@@ -322,6 +367,7 @@ describe("timer refresh scheduling", () => {
       const store = new Store(snapshotPersist(), emptyState());
       mountTimer(store, () => {});
       assert.equal(intervalCalls, 0);
+      assert.equal(timeoutCalls, 0);
     } finally {
       if (originalDocument === undefined) delete (globalThis as { document?: unknown }).document;
       else (globalThis as { document?: unknown }).document = originalDocument;
