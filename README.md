@@ -6,7 +6,7 @@ board on this machine: there is no account, cloud sync, updater, or telemetry.
 ## Downloads
 
 - [Windows x64 NSIS installer](https://github.com/KonnaCapital/desk/releases/latest/download/Desk-Windows-x64-Setup.exe)
-- [macOS universal DMG (preview)](https://github.com/KonnaCapital/desk/releases/latest/download/Desk-macOS-Universal.dmg)
+- [macOS releases (signed/notarized only)](https://github.com/KonnaCapital/desk/releases)
 - [SHA256 checksums](https://github.com/KonnaCapital/desk/releases/latest/download/SHA256SUMS)
 
 Release automation creates a draft first. A maintainer must inspect and publish
@@ -56,8 +56,16 @@ The installer's **Delete App Data** option is explicit and opt-in.
 
 To remove everything on Windows, quit Desk, uninstall it from **Settings → Apps
 → Installed apps**, then delete `%LOCALAPPDATA%\com.konnacapital.desk` if it
-still exists. To remove everything on macOS, quit Desk, move `Desk.app` to the
-Trash, then delete `~/Library/Application Support/com.konnacapital.desk`.
+still exists. To remove everything on macOS, first open Desk **Settings** and
+turn off **Launch Desk at login**. Then quit Desk, move `Desk.app` to the Trash,
+and delete `~/Library/Application Support/com.konnacapital.desk`.
+
+If the Mac setting cannot be opened, the official autostart plugin's Launch
+Agent fallback is derived under `~/Library/LaunchAgents/{app_name}.plist`.
+Inspect that directory and the candidate plist's `Label` and `ProgramArguments`
+before removing only the Desk entry. The exact Desk filename is not proven on
+this Windows host and must be confirmed in the real-Mac gate; do not assume a
+filename or delete unrelated LaunchAgent plists.
 
 ## Development
 

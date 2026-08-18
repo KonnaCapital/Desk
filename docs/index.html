@@ -16,7 +16,7 @@
         <p class="sub">Desk saves on this machine. No account, no phone, no cloud. Pin it to the corner when everything else is loud.</p>
         <p class="actions">
           <a class="download" href="https://github.com/KonnaCapital/desk/releases/latest/download/Desk-Windows-x64-Setup.exe">Download for Windows</a>
-          <a class="download secondary" href="https://github.com/KonnaCapital/desk/releases/latest/download/Desk-macOS-Universal.dmg">Download macOS DMG (preview)</a>
+          <a class="download secondary" href="https://github.com/KonnaCapital/desk/releases">View signed macOS releases</a>
           <a class="source" href="https://github.com/KonnaCapital/desk/releases/latest/download/SHA256SUMS">SHA256 checksums</a>
           <a class="source" href="https://github.com/KonnaCapital/desk">Source</a>
         </p>
@@ -35,7 +35,7 @@
 
           <h2>Complete removal</h2>
           <p><strong>Windows:</strong> quit Desk, uninstall it from Settings → Apps → Installed apps, then delete the Windows data folder above if it remains. The installer removes only Desk's own Run-key autostart value; Delete App Data is an explicit installer option.</p>
-          <p><strong>macOS:</strong> quit Desk, move <code>Desk.app</code> to the Trash, then delete the macOS data folder above.</p>
+          <p><strong>macOS:</strong> before deleting the app, open Desk <strong>Settings</strong> and turn off <strong>Launch Desk at login</strong>. Then quit Desk, move <code>Desk.app</code> to the Trash, and delete the macOS data folder above. If the setting cannot be opened, the plugin's derived fallback is <code>~/Library/LaunchAgents/{app_name}.plist</code>; inspect the candidate's <code>Label</code> and <code>ProgramArguments</code> first. The exact Desk filename must be confirmed in the real-Mac gate, so do not assume one or delete unrelated plists.</p>
         </section>
       </section>
 
@@ -44,7 +44,7 @@
         <p class="sub">Desk tallentaa tälle koneelle. Ei tiliä, puhelinta, pilveä tai seurantaa. Kiinnitä se reunaan, kun kaikki muu on äänessä.</p>
         <p class="actions">
           <a class="download" href="https://github.com/KonnaCapital/desk/releases/latest/download/Desk-Windows-x64-Setup.exe">Lataa Windowsiin</a>
-          <a class="download secondary" href="https://github.com/KonnaCapital/desk/releases/latest/download/Desk-macOS-Universal.dmg">Lataa macOS DMG (esikatselu)</a>
+          <a class="download secondary" href="https://github.com/KonnaCapital/desk/releases">Katso allekirjoitetut macOS-julkaisut</a>
           <a class="source" href="https://github.com/KonnaCapital/desk/releases/latest/download/SHA256SUMS">SHA256-tarkistussummat</a>
           <a class="source" href="https://github.com/KonnaCapital/desk">Lähdekoodi</a>
         </p>
@@ -63,7 +63,7 @@
 
           <h2>Poista kaikki</h2>
           <p><strong>Windows:</strong> sulje Desk, poista se kohdasta Asetukset → Sovellukset → Asennetut sovellukset ja poista yllä oleva Windowsin datakansio, jos se jäi jäljelle. Asennin poistaa vain Deskille kuuluvan Run-avaimen automaattikäynnistyksen; Delete App Data on erikseen valittava asetus.</p>
-          <p><strong>macOS:</strong> sulje Desk, siirrä <code>Desk.app</code> roskakoriin ja poista yllä oleva macOS-datakansio.</p>
+          <p><strong>macOS:</strong> ennen sovelluksen poistamista avaa Desk <strong>Asetukset</strong> ja poista käytöstä <strong>Käynnistä Desk kirjautumisen yhteydessä</strong>. Sulje Desk, siirrä <code>Desk.app</code> roskakoriin ja poista yllä oleva macOS-datakansio. Jos asetusta ei voi avata, lisäkäynnistyksen johdettu varapolku on <code>~/Library/LaunchAgents/{app_name}.plist</code>; tarkista ehdokkaan <code>Label</code> ja <code>ProgramArguments</code> ennen poistamista. Tarkka Desk-tiedostonimi on vahvistettava oikean Macin portissa, joten älä arvaa nimeä tai poista muita plist-tiedostoja.</p>
         </section>
       </section>
     </main>

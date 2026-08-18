@@ -39,10 +39,24 @@ jobs:
         shell: pwsh
         run: |
           $overlay = @{ bundle = @{ windows = @{} } }
-          $hasSigning = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE) -and
-            -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_PASSWORD) -and
-            -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_THUMBPRINT) -and
-            -not [string]::IsNullOrWhiteSpace($env:WINDOWS_TIMESTAMP_URL)
+          $hasAnySigning = $false
+          $hasSigning = $true
+          foreach ($value in @(
+            $env:WINDOWS_CERTIFICATE,
+            $env:WINDOWS_CERTIFICATE_PASSWORD,
+            $env:WINDOWS_CERTIFICATE_THUMBPRINT,
+            $env:WINDOWS_TIMESTAMP_URL
+          )) {
+            if ([string]::IsNullOrWhiteSpace($value)) {
+              $hasSigning = $false
+            } else {
+              $hasAnySigning = $true
+            }
+          }
+
+          if ($hasAnySigning -and -not $hasSigning) {
+            throw 'Incomplete Windows signing configuration; set all four Windows signing secrets or none.'
+          }
 
           if ($hasSigning) {
             New-Item -ItemType Directory -Force -Path certificate | Out-Null
