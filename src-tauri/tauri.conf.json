@@ -43,7 +43,15 @@
       "nsis": {
         "installMode": "currentUser",
         "displayLanguageSelector": false,
-        "languages": ["English", "Finnish"],
+        "languages": [
+          "English",
+          "German",
+          "French",
+          "Spanish",
+          "Russian",
+          "SimpChinese",
+          "Finnish"
+        ],
         "installerHooks": "nsis/hooks.nsh",
         "customLanguageFiles": {
           "Finnish": "nsis/Finnish.nsh"

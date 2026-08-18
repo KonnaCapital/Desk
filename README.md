@@ -2,7 +2,7 @@
 
 Two things on your desktop: a local kanban and a pin-able timer.
 
-It saves on this machine. No account, no phone, no cloud. Pin it to the corner when everything else is loud. It does not try to be a second brain.
+It saves on this machine. No account, no phone, no cloud. Pin it to the corner when everything else is loud. A tool to help slow down.
 
 ## Get it
 
@@ -10,7 +10,7 @@ It saves on this machine. No account, no phone, no cloud. Pin it to the corner w
 
 Windows may warn that the installer is unsigned. Choose **More info**, then **Run anyway**.
 
-The same page: [konnacapital.github.io/desk](https://konnacapital.github.io/desk). Finnish and English follow the computer language. Columns stay Inbox / Today / To Do / Done.
+The same page: [konnacapital.github.io/desk](https://konnacapital.github.io/desk). Language follows the computer. Columns stay Inbox / Today / To Do / Done.
 
 ## Use it
 

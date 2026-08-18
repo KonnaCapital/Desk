@@ -6,7 +6,7 @@
     <title>Desk</title>
     <meta
       name="description"
-      content="Desk is two things on your desktop: a local kanban and a pin-able timer."
+      content="Desk is two things on your desktop: a local kanban and a pin-able timer. A tool to help slow down."
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
@@ -15,7 +15,7 @@
       <p class="name">Desk</p>
       <h1 data-i18n="lede">Two things on your desktop: a local kanban and a pin-able timer.</h1>
       <p class="sub" data-i18n="sub">
-        It saves on this machine. No account, no phone, no cloud. Pin it to the corner when everything else is loud.
+        It saves on this machine. No account, no phone, no cloud. Pin it to the corner when everything else is loud. A tool to help slow down.
       </p>
       <p class="actions">
         <a
@@ -31,27 +31,65 @@
       </p>
     </main>
     <script>
-      const fi = navigator.language.toLowerCase().startsWith("fi");
-      document.documentElement.lang = fi ? "fi" : "en";
       const copy = {
         en: {
           lede: "Two things on your desktop: a local kanban and a pin-able timer.",
-          sub: "It saves on this machine. No account, no phone, no cloud. Pin it to the corner when everything else is loud.",
+          sub: "It saves on this machine. No account, no phone, no cloud. Pin it to the corner when everything else is loud. A tool to help slow down.",
           download: "Download for Windows",
           source: "Source",
           note: "The installer is unsigned. Windows may say it protected your PC — choose More info, then Run anyway. Uninstall from Settings. Cards stay unless you delete app data.",
         },
+        de: {
+          lede: "Zwei Dinge auf dem Schreibtisch: ein lokales Kanban und ein anheftbarer Timer.",
+          sub: "Speichert auf diesem Rechner. Kein Konto, kein Telefon, keine Cloud. An den Rand heften, wenn alles andere laut ist. Ein Werkzeug, um dann langsamer zu werden.",
+          download: "Für Windows laden",
+          source: "Quellcode",
+          note: "Der Installer ist unsigniert. Windows kann warnen — Weitere Informationen, dann Trotzdem ausführen. Deinstallation über Einstellungen. Karten bleiben, wenn App-Daten nicht gelöscht werden.",
+        },
+        es: {
+          lede: "Dos cosas en el escritorio: un kanban local y un temporizador que se puede fijar.",
+          sub: "Se guarda en este equipo. Sin cuenta, sin teléfono, sin nube. Fíjalo en la esquina cuando todo lo demás es ruido. Una herramienta para ir más despacio.",
+          download: "Descargar para Windows",
+          source: "Código",
+          note: "El instalador no está firmado. Windows puede avisar — Más información y Ejecutar de todas formas. Desinstala en Configuración. Las tarjetas quedan si no borras los datos.",
+        },
+        fr: {
+          lede: "Deux choses sur le bureau : un kanban local et un minuteur que l’on peut épingler.",
+          sub: "Enregistrement sur cette machine. Pas de compte, pas de téléphone, pas de cloud. Épinglez-le dans le coin quand tout le reste est bruyant. Un outil pour ralentir.",
+          download: "Télécharger pour Windows",
+          source: "Code source",
+          note: "L’installateur n’est pas signé. Windows peut avertir — Plus d’infos, puis Exécuter quand même. Désinstallation dans Paramètres. Les cartes restent si vous ne supprimez pas les données.",
+        },
+        ru: {
+          lede: "Две вещи на рабочем столе: локальный канбан и таймер, который можно закрепить.",
+          sub: "Сохраняется на этом компьютере. Без аккаунта, телефона и облака. Закрепите в углу, когда вокруг слишком шумно. Инструмент, чтобы замедлиться.",
+          download: "Скачать для Windows",
+          source: "Исходный код",
+          note: "Установщик не подписан. Windows может предупредить — Подробнее, затем Выполнить в любом случае. Удаление в Параметрах. Карточки остаются, если не удалять данные.",
+        },
+        zh: {
+          lede: "桌面上的两件事：本地看板，和可置顶的计时器。",
+          sub: "保存在这台电脑上。没有账号，没有手机，没有云。四周太吵时，把它钉在角落。用来帮你慢下来。",
+          download: "下载 Windows 版",
+          source: "源码",
+          note: "安装包未签名。Windows 可能提示保护了电脑 — 选择“更多信息”，然后“仍要运行”。从设置卸载。除非删除应用数据，卡片会保留。",
+        },
         fi: {
           lede: "Kaksi asiaa työpöydällä: paikallinen kanban ja pinattava ajastin.",
-          sub: "Tallentaa tälle koneelle. Ei tiliä, ei puhelinta, ei pilveä. Kiinnitä reunaan, kun kaikki muu on äänessä.",
+          sub: "Tallentaa tälle koneelle. Ei tiliä, ei puhelinta, ei pilveä. Kiinnitä reunaan, kun kaikki muu on äänessä. Työkalu hidastamaan.",
           download: "Lataa Windowsiin",
           source: "Lähdekoodi",
           note: "Asennin on allekirjoittamaton. Windows voi sanoa suojanneensa tietokoneen — valitse Lisätietoja ja sitten Suorita silti. Poisto Windowsin asetuksista. Kortit jäävät, ellei datan poistoa valitse.",
         },
-      }[fi ? "fi" : "en"];
+      };
+      const tag = (navigator.language || "en").toLowerCase().replaceAll("_", "-");
+      const primary = tag.split("-")[0] || "en";
+      const locale = primary === "zh" ? "zh" : primary in copy ? primary : "en";
+      document.documentElement.lang = locale;
+      const strings = copy[locale];
       for (const el of document.querySelectorAll("[data-i18n]")) {
         const key = el.getAttribute("data-i18n");
-        if (key && copy[key]) el.textContent = copy[key];
+        if (key && strings[key]) el.textContent = strings[key];
       }
     </script>
   </body>

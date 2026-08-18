@@ -3,16 +3,22 @@ import { describe, it } from "node:test";
 import { detectLocale, setLocale, t } from "./i18n.ts";
 
 describe("detectLocale", () => {
-  it("uses Finnish when the language tag starts with fi", () => {
-    assert.equal(detectLocale("fi"), "fi");
+  it("follows the computer language for the bundled locales", () => {
+    assert.equal(detectLocale("de-DE"), "de");
+    assert.equal(detectLocale("es-MX"), "es");
+    assert.equal(detectLocale("fr"), "fr");
+    assert.equal(detectLocale("ru-RU"), "ru");
+    assert.equal(detectLocale("zh-CN"), "zh");
+    assert.equal(detectLocale("zh-Hans"), "zh");
     assert.equal(detectLocale("fi-FI"), "fi");
     assert.equal(detectLocale("FI"), "fi");
   });
 
-  it("uses English for every other language", () => {
+  it("uses English when the language is unknown", () => {
     assert.equal(detectLocale("en"), "en");
     assert.equal(detectLocale("en-US"), "en");
     assert.equal(detectLocale("sv-SE"), "en");
+    assert.equal(detectLocale("ja-JP"), "en");
     assert.equal(detectLocale(""), "en");
   });
 });
@@ -22,6 +28,10 @@ describe("messages", () => {
     setLocale("fi");
     assert.equal(t("board"), "Taulu");
     assert.equal(t("clock"), "Kello");
+    setLocale("de");
+    assert.equal(t("clock"), "Uhr");
+    setLocale("zh");
+    assert.equal(t("pin"), "置顶");
     setLocale("en");
     assert.equal(t("board"), "Board");
     assert.equal(t("clock"), "Clock");
