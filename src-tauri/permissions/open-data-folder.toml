@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-open-data-folder"
+description = "Allows opening the local Desk data folder in the system file manager."
+commands.allow = ["open_data_folder"]

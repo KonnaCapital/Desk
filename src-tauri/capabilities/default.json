@@ -10,6 +10,9 @@
     "core:window:allow-set-always-on-top",
     "core:window:allow-set-resizable",
     "core:window:allow-start-dragging",
+    "core:window:allow-show",
+    "core:window:allow-unminimize",
+    "core:window:allow-set-focus",
     "core:window:allow-minimize",
     "core:window:allow-close",
     "core:window:allow-destroy",
@@ -43,6 +46,7 @@
     "notification:allow-notify",
     "autostart:allow-enable",
     "autostart:allow-disable",
-    "autostart:allow-is-enabled"
+    "autostart:allow-is-enabled",
+    "allow-open-data-folder"
   ]
 }

@@ -92,6 +92,8 @@ input:focus {
   background: #1a1a1a;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .chrome button,
@@ -267,8 +269,28 @@ button,
   user-select: text;
 }
 
-.card:hover {
-  background: var(--bg-hover);
+.card[contenteditable="true"] {
+  cursor: text;
+  outline: 1px solid var(--accent);
+  user-select: text;
+}
+
+.archive-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.archive-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.setting-row-button {
+  width: 100%;
+  margin-top: 8px;
 }
 
 .card-dragging {
@@ -302,6 +324,8 @@ button,
   justify-content: center;
   position: relative;
   cursor: grab;
+  overflow: hidden;
+  container-type: size;
 }
 
 .clock-face {
@@ -319,7 +343,7 @@ button,
 .clock-digits {
   font-variant-numeric: tabular-nums;
   font-weight: 200;
-  font-size: clamp(72px, 24vw, 220px);
+  font-size: clamp(32px, min(18cqw, 70cqh), 220px);
   letter-spacing: 0.04em;
   line-height: 0.95;
   background: none;
@@ -327,6 +351,7 @@ button,
   padding: 0;
   color: var(--text);
   cursor: pointer;
+  white-space: nowrap;
   -webkit-app-region: no-drag;
 }
 
@@ -385,10 +410,6 @@ body[data-timer="running"] .clock-presets,
 body[data-timer="running"] .custom-duration,
 body[data-timer="running"] .clock-actions {
   display: none;
-}
-
-body[data-timer="running"] .clock-digits {
-  font-size: clamp(84px, 28vw, 260px);
 }
 
 .overlay {
@@ -499,7 +520,7 @@ body[data-size="xs"] .chrome {
 
 body[data-size="xs"] .clock-digits,
 body[data-timer="running"][data-size="xs"] .clock-digits {
-  font-size: clamp(36px, 32vw, 88px);
+  font-size: clamp(28px, min(22cqw, 60cqh), 88px);
 }
 
 body[data-size="xs"] .clock-face {

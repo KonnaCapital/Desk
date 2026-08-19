@@ -5,12 +5,16 @@ import {
   archiveDone,
   COLUMNS,
   emptyState,
+  hoursToDurationMs,
   isFinished,
   moveCard,
   parseState,
   pauseTimer,
   remainingMs,
   resetTimer,
+  restoreCard,
+  setDuration,
+  sizeClass,
   startTimer,
   visibleCards,
 } from "./model.ts";
@@ -115,6 +119,22 @@ describe("timer", () => {
     assert.equal(state.timer.remainingMs, 25 * 60 * 1000);
   });
 
+  it("applies a new duration from now while running", () => {
+    let state = startTimer(emptyState(), 10_000);
+    state = setDuration(state, 2 * 60 * 60 * 1000, 20_000);
+    assert.equal(state.timer.running, true);
+    assert.equal(state.timer.durationMs, 2 * 60 * 60 * 1000);
+    assert.equal(state.timer.remainingMs, 2 * 60 * 60 * 1000);
+    assert.equal(state.timer.endsAt, 20_000 + 2 * 60 * 60 * 1000);
+  });
+
+  it("ignores a duration below one minute", () => {
+    const state = emptyState();
+    const next = setDuration(state, hoursToDurationMs(0, 0));
+    assert.equal(next, state);
+    assert.equal(hoursToDurationMs(0, 0), 0);
+  });
+
   it("is finished when endsAt has passed", () => {
     const started = startTimer(emptyState(), 0);
     assert.equal(isFinished(started.timer, started.timer.endsAt! + 1), true);
@@ -131,6 +151,9 @@ describe("archive", () => {
     state = archiveDone(state, 3);
     assert.equal(visibleCards(state, "done").length, 0);
     assert.equal(state.cards[0].archivedAt, 3);
+    state = restoreCard(state, id, 4);
+    assert.equal(visibleCards(state, "done").length, 1);
+    assert.equal(state.cards[0].archivedAt, null);
   });
 });
 
@@ -140,6 +163,13 @@ describe("columns", () => {
       COLUMNS.map((col) => col.label),
       ["Inbox", "Today", "To Do", "Done"],
     );
+  });
+});
+
+describe("sizeClass", () => {
+  it("treats a short window as compact even when it is still wide", () => {
+    assert.equal(sizeClass(1100, 160), "xs");
+    assert.equal(sizeClass(1100, 720), "lg");
   });
 });
 

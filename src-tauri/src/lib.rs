@@ -1,4 +1,4 @@
-use std::{thread, time::Duration};
+use std::{path::Path, thread, time::Duration};
 
 use tauri::{AppHandle, Manager, Runtime};
 
@@ -30,6 +30,40 @@ fn restore_main_window_with_retry<R: Runtime + 'static>(app: AppHandle<R>) {
     });
 }
 
+fn open_path(path: &Path) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(path)
+            .spawn()
+            .map_err(|err| err.to_string())?;
+        return Ok(());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(path)
+            .spawn()
+            .map_err(|err| err.to_string())?;
+        return Ok(());
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        let _ = path;
+        Err("Opening the data folder is not supported on this system.".into())
+    }
+}
+
+#[tauri::command]
+fn open_data_folder(app: AppHandle) -> Result<(), String> {
+    let dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|err| err.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|err| err.to_string())?;
+    open_path(&dir)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -39,6 +73,7 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
+        .invoke_handler(tauri::generate_handler![open_data_folder])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
