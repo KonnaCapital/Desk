@@ -4,6 +4,10 @@ Two things on your desktop: a local kanban and a pin-able timer.
 
 It saves on this machine. No account, no phone, no cloud. Pin it to the corner when everything else is loud. A tool to help slow down.
 
+![Desk board](docs/images/board.png)
+
+![Desk clock](docs/images/clock.png)
+
 ## Get it
 
 [Download for Windows](https://github.com/KonnaCapital/Desk/releases/latest) · [Source](https://github.com/KonnaCapital/Desk)
@@ -17,6 +21,8 @@ The same page: [konnacapital.github.io/Desk](https://konnacapital.github.io/Desk
 ## Use it
 
 Capture into Inbox. Move cards to Today, To Do, Done. The clock is 25 minutes, an hour, two hours, or your own time. Shrink it to the edge, then pin it so it stays put and on top.
+
+![Desk at a narrow size](docs/images/board-narrow.png)
 
 Settings has one switch: launch at login. Turn it off before you uninstall if you used it. Settings can also open the local data folder.
 
