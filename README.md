@@ -16,7 +16,7 @@ Windows may warn that the installer is unsigned. Choose **More info**, then **Ru
 
 There is no public Mac download. You can build a preview from source; macOS Gatekeeper may block an unsigned app.
 
-The same page: [konnacapital.github.io/Desk](https://konnacapital.github.io/Desk). Language follows the computer. Columns stay Inbox / Today / To Do / Done.
+The same page: [konnacapital.github.io/Desk](https://konnacapital.github.io/Desk). The app follows the computer language. Columns stay Inbox / Today / To Do / Done.
 
 ## Use it
 
