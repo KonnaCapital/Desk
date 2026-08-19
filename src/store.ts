@@ -12,6 +12,7 @@ import {
   parseState,
   pauseTimer as pauseTimerModel,
   resetTimer as resetTimerModel,
+  restoreCard as restoreCardModel,
   setDuration as setDurationModel,
   setNarrowColumn as setNarrowColumnModel,
   setPinned as setPinnedModel,
@@ -346,6 +347,10 @@ export class Store {
     this.commit(archiveDoneModel(this.state));
   }
 
+  restoreCard(id: string) {
+    this.commit(restoreCardModel(this.state, id));
+  }
+
   setView(view: View) {
     this.commit(setViewModel(this.state, view));
   }
@@ -358,8 +363,11 @@ export class Store {
     this.commit(setNarrowColumnModel(this.state, column));
   }
 
-  setDuration(durationMs: number) {
-    this.commit(setDurationModel(this.state, durationMs));
+  setDuration(durationMs: number): boolean {
+    const next = setDurationModel(this.state, durationMs);
+    if (next === this.state) return false;
+    this.commit(next);
+    return true;
   }
 
   startTimer() {

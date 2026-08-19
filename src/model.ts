@@ -196,6 +196,21 @@ export function archiveDone(state: BoardState, now = Date.now()): BoardState {
   };
 }
 
+export function restoreCard(
+  state: BoardState,
+  id: string,
+  now = Date.now(),
+): BoardState {
+  return {
+    ...state,
+    cards: state.cards.map((card) =>
+      card.id === id && card.archivedAt != null
+        ? { ...card, archivedAt: null, updatedAt: now }
+        : card,
+    ),
+  };
+}
+
 export function visibleCards(state: BoardState, column: Column): Card[] {
   return state.cards.filter(
     (card) => card.column === column && card.archivedAt == null,
@@ -232,10 +247,23 @@ export function formatTime(ms: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export function setDuration(state: BoardState, durationMs: number): BoardState {
-  const ms = Math.max(MIN, Math.round(durationMs));
+export function setDuration(
+  state: BoardState,
+  durationMs: number,
+  now = Date.now(),
+): BoardState {
+  const ms = Math.round(durationMs);
+  if (!Number.isFinite(ms) || ms < MIN) return state;
   if (state.timer.running) {
-    return { ...state, timer: { ...state.timer, durationMs: ms } };
+    return {
+      ...state,
+      timer: {
+        ...state.timer,
+        durationMs: ms,
+        remainingMs: ms,
+        endsAt: now + ms,
+      },
+    };
   }
   return {
     ...state,
@@ -251,7 +279,7 @@ export function setDuration(state: BoardState, durationMs: number): BoardState {
 export function hoursToDurationMs(hours: number, minutes = 0): number {
   const h = Number.isFinite(hours) ? Math.max(0, hours) : 0;
   const m = Number.isFinite(minutes) ? Math.max(0, minutes) : 0;
-  return Math.max(MIN, h * HOUR + m * MIN);
+  return h * HOUR + m * MIN;
 }
 
 export function startTimer(state: BoardState, now = Date.now()): BoardState {
@@ -310,7 +338,7 @@ export function isFinished(timer: TimerState, now = Date.now()): boolean {
 }
 
 export function sizeClass(width: number, height: number): SizeClass {
-  if (width < 280 || height < 140) return "xs";
+  if (width < 280 || height < 200) return "xs";
   if (width < 520) return "sm";
   if (width < 900) return "md";
   return "lg";

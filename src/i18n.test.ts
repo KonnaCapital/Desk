@@ -28,6 +28,13 @@ describe("messages", () => {
     setLocale("fi");
     assert.equal(t("board"), "Taulu");
     assert.equal(t("clock"), "Kello");
+    assert.equal(t("capture"), "Kirjaa");
+    assert.equal(t("columnEmpty"), "Tyhjä");
+    assert.equal(t("archiveDone"), "Arkistoi valmiit");
+    assert.equal(
+      t("persistenceCloseRegistrationError"),
+      "Suojausta suljettaessa ei voitu asentaa.",
+    );
     setLocale("de");
     assert.equal(t("clock"), "Uhr");
     setLocale("zh");

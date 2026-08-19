@@ -57,6 +57,7 @@
           <span>min</span>
           <button type="submit" data-i18n="setDuration">Set</button>
         </form>
+        <p id="clock-duration-status" class="settings-status muted hidden" role="status" aria-live="polite"></p>
         <div class="clock-actions">
           <button type="button" id="timer-toggle" class="primary" data-i18n="start">Start</button>
           <button type="button" id="timer-reset" data-i18n="reset">Reset</button>
@@ -77,6 +78,16 @@
       </div>
     </div>
 
+    <div id="archive-confirm-overlay" class="overlay hidden" role="dialog" aria-modal="true">
+      <div class="overlay-card settings-card">
+        <p data-i18n="archiveConfirm">Archive all cards in Done?</p>
+        <div class="board-footer">
+          <button type="button" id="archive-confirm-cancel" data-i18n="cancel">Cancel</button>
+          <button type="button" id="archive-confirm-ok" class="primary" data-i18n="archiveDone">Archive Done</button>
+        </div>
+      </div>
+    </div>
+
     <div id="settings-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <div class="overlay-card settings-card">
         <header>
@@ -88,6 +99,8 @@
           <input id="autostart-toggle" type="checkbox" />
         </label>
         <p id="settings-autostart-status" class="settings-status muted" role="status" aria-live="polite"></p>
+        <button type="button" id="show-data-folder" class="setting-row-button" data-i18n="showDataFolder">Show data folder</button>
+        <p id="settings-data-folder-status" class="settings-status muted" role="status" aria-live="polite"></p>
       </div>
     </div>
   </body>

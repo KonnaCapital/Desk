@@ -22,6 +22,8 @@ export async function mountChrome(store: Store): Promise<void> {
   const closeSettingsBtn = document.querySelector<HTMLButtonElement>("#close-settings")!;
   const autostartToggle = document.querySelector<HTMLInputElement>("#autostart-toggle")!;
   const autostartStatus = document.querySelector<HTMLElement>("#settings-autostart-status")!;
+  const showDataFolderBtn = document.querySelector<HTMLButtonElement>("#show-data-folder")!;
+  const dataFolderStatus = document.querySelector<HTMLElement>("#settings-data-folder-status")!;
   const boardView = document.querySelector<HTMLElement>("#board-view")!;
   const clockView = document.querySelector<HTMLElement>("#clock-view")!;
   const chrome = document.querySelector<HTMLElement>(".chrome")!;
@@ -93,6 +95,9 @@ export async function mountChrome(store: Store): Promise<void> {
   autostartToggle.addEventListener("change", () => {
     void changeAutostart();
   });
+  showDataFolderBtn.addEventListener("click", () => {
+    void openDataFolder();
+  });
 
   minBtn.addEventListener("click", async () => {
     await nativeWindow?.minimize();
@@ -158,6 +163,16 @@ export async function mountChrome(store: Store): Promise<void> {
     autostartToggle.checked = result.enabled;
     autostartToggle.disabled = !autostartController.available;
     autostartStatus.textContent = result.error ? autostartErrorMessage(result.error) : "";
+  }
+
+  async function openDataFolder() {
+    dataFolderStatus.textContent = "";
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("open_data_folder");
+    } catch {
+      dataFolderStatus.textContent = t("showDataFolderError");
+    }
   }
 
   function applyPersistenceStatus(state: PersistenceState) {

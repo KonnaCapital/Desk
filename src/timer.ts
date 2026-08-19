@@ -9,6 +9,7 @@ export function mountTimer(store: Store, onComplete: () => void): void {
   const form = document.querySelector<HTMLFormElement>("#custom-duration")!;
   const hoursInput = document.querySelector<HTMLInputElement>("#hours-input")!;
   const minsInput = document.querySelector<HTMLInputElement>("#mins-input")!;
+  const durationStatus = document.querySelector<HTMLElement>("#clock-duration-status")!;
   const toggle = document.querySelector<HTMLButtonElement>("#timer-toggle")!;
   const reset = document.querySelector<HTMLButtonElement>("#timer-reset")!;
 
@@ -21,13 +22,17 @@ export function mountTimer(store: Store, onComplete: () => void): void {
     const btn = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-ms]");
     if (!btn) return;
     store.setDuration(Number(btn.dataset.ms));
+    durationStatus.textContent = "";
+    durationStatus.classList.add("hidden");
   });
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const hours = Number(hoursInput.value || 0);
     const minutes = Number(minsInput.value || 0);
-    store.setDuration(hoursToDurationMs(hours, minutes));
+    const applied = store.setDuration(hoursToDurationMs(hours, minutes));
+    durationStatus.textContent = applied ? "" : t("durationTooShort");
+    durationStatus.classList.toggle("hidden", applied);
   });
 
   toggle.addEventListener("click", () => {
