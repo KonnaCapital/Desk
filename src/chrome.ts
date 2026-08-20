@@ -6,6 +6,12 @@ import {
 } from "./autostart.ts";
 import { registerCloseHandler, type CloseFlushResult } from "./close.ts";
 import { t } from "./i18n.ts";
+import {
+  applyCornerSnapIfNeeded,
+  MOVE_SETTLE_MS,
+  type CornerSnapHost,
+  type MonitorWorkArea,
+} from "./corner-snap.ts";
 import { persistChromeCopy } from "./persist-status.ts";
 import { createModalController } from "./modal.ts";
 import { applyWindowPin } from "./pin.ts";
@@ -32,6 +38,9 @@ export async function mountChrome(store: Store): Promise<void> {
   let closeProtectionMessage: string | null = null;
   let lastPersistStatus: PersistenceState["status"] | null = null;
   let persistHideTimer: number | null = null;
+  let liveDrag = false;
+  let applyingSnap = false;
+  let movedQuietTimer: number | null = null;
   const nativeWindow = await getWindow();
   if (nativeWindow) {
     const registration = await registerCloseHandler(
@@ -68,11 +77,39 @@ export async function mountChrome(store: Store): Promise<void> {
     if (event.button !== 0) return;
     const target = event.target as HTMLElement | null;
     if (target?.closest("button, input, textarea, a, .card")) return;
+    liveDrag = true;
     void nativeWindow?.startDragging();
+  };
+
+  const finishDrag = async () => {
+    if (!liveDrag || applyingSnap || store.state.pinned) return;
+    liveDrag = false;
+    if (movedQuietTimer !== null) {
+      window.clearTimeout(movedQuietTimer);
+      movedQuietTimer = null;
+    }
+    if (!nativeWindow) return;
+    applyingSnap = true;
+    try {
+      await applyCornerSnapIfNeeded(createSnapHost(nativeWindow));
+    } catch {
+      // Browser preview has no window chrome.
+    } finally {
+      applyingSnap = false;
+    }
   };
 
   chrome.addEventListener("mousedown", beginDrag);
   clockView.addEventListener("mousedown", beginDrag);
+  document.addEventListener("pointerup", () => void finishDrag(), true);
+  document.addEventListener("mouseup", () => void finishDrag(), true);
+  if (nativeWindow) {
+    void nativeWindow.onMoved(() => {
+      if (applyingSnap || store.state.pinned || !liveDrag) return;
+      if (movedQuietTimer !== null) window.clearTimeout(movedQuietTimer);
+      movedQuietTimer = window.setTimeout(() => void finishDrag(), MOVE_SETTLE_MS);
+    });
+  }
 
   boardBtn.addEventListener("click", () => store.setView("board"));
   clockBtn.addEventListener("click", () => store.setView("clock"));
@@ -224,6 +261,33 @@ async function getWindow() {
   } catch {
     return null;
   }
+}
+
+
+function createSnapHost(
+  nativeWindow: NonNullable<Awaited<ReturnType<typeof getWindow>>>,
+): CornerSnapHost {
+  return {
+    outerPosition: () => nativeWindow.outerPosition(),
+    outerSize: () => nativeWindow.outerSize(),
+    async availableMonitors() {
+      const { availableMonitors } = await import("@tauri-apps/api/window");
+      const monitors = await availableMonitors();
+      return monitors.map(
+        (monitor): MonitorWorkArea => ({
+          scaleFactor: monitor.scaleFactor,
+          x: monitor.workArea.position.x,
+          y: monitor.workArea.position.y,
+          width: monitor.workArea.size.width,
+          height: monitor.workArea.size.height,
+        }),
+      );
+    },
+    async setPosition(x, y) {
+      const { PhysicalPosition } = await import("@tauri-apps/api/window");
+      await nativeWindow.setPosition(new PhysicalPosition(x, y));
+    },
+  };
 }
 
 function applyDragRegions(pinned: boolean) {
