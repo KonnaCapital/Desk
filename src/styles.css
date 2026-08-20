@@ -585,3 +585,56 @@ body[data-view="clock"][data-size="xs"] .clock-actions .primary,
 body[data-view="clock"][data-size="xs"] .clock-digits {
   min-width: 0;
 }
+
+body[data-clock-solo="true"] {
+  background: #191919;
+  box-shadow: inset 0 0 0 1px rgba(220, 220, 220, 0.2);
+}
+
+body[data-clock-solo="true"] .chrome {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  opacity: 0;
+  z-index: 8;
+  border-bottom-color: transparent;
+  background: #1a1a1af5;
+}
+
+body[data-clock-solo="true"] .chrome:hover,
+body[data-clock-solo="true"] .chrome:focus-within {
+  opacity: 1;
+  border-bottom-color: var(--border);
+}
+
+body[data-clock-solo="true"] .view {
+  height: 100%;
+}
+
+body[data-clock-solo="true"] .clock-view {
+  cursor: default;
+}
+
+body[data-clock-solo="true"] .clock-presets,
+body[data-clock-solo="true"] .custom-duration,
+body[data-clock-solo="true"] .clock-actions,
+body[data-clock-solo="true"] #clock-duration-status {
+  display: none;
+}
+
+body[data-clock-solo="true"] .clock-face {
+  padding: 8px 8px 22px;
+  gap: 0;
+}
+
+body[data-clock-solo="true"] .clock-digits {
+  font-size: clamp(40px, min(26cqw, 78cqh), 280px);
+}
+
+body[data-clock-solo="true"][data-clock-digits="stack"] .clock-digits,
+body[data-clock-solo="true"][data-size="xs"] .clock-digits,
+body[data-clock-solo="true"][data-clock-digits="stack"][data-size="xs"] .clock-digits,
+body[data-timer="running"][data-clock-solo="true"][data-size="xs"] .clock-digits {
+  font-size: clamp(56px, min(56cqw, 34cqh), 280px);
+}

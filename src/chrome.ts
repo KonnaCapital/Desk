@@ -14,6 +14,11 @@ import {
 } from "./corner-snap.ts";
 import { persistChromeCopy } from "./persist-status.ts";
 import { createModalController } from "./modal.ts";
+import {
+  clockSoloTarget,
+  nextClockSolo,
+  shouldBlockTimerToggle,
+} from "./clock-solo.ts";
 import { applyWindowPin } from "./pin.ts";
 import type { PersistenceState, Store } from "./store.ts";
 
@@ -41,6 +46,7 @@ export async function mountChrome(store: Store): Promise<void> {
   let liveDrag = false;
   let applyingSnap = false;
   let movedQuietTimer: number | null = null;
+  let clockSolo = false;
   const nativeWindow = await getWindow();
   if (nativeWindow) {
     const registration = await registerCloseHandler(
@@ -119,6 +125,21 @@ export async function mountChrome(store: Store): Promise<void> {
     store.setPinned(next);
   });
 
+  clockView.addEventListener(
+    "click",
+    (event) => {
+      const target = clockSoloTarget(event.target);
+      const next = nextClockSolo(store.state.pinned, store.state.view, clockSolo, target);
+      if (shouldBlockTimerToggle(store.state.pinned, store.state.view, clockSolo, target)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      clockSolo = next;
+      document.body.dataset.clockSolo = clockSolo ? "true" : "false";
+    },
+    true,
+  );
+
   settingsBtn.addEventListener("click", () => {
     settingsModal.open(
       document.activeElement instanceof HTMLElement ? document.activeElement : null,
@@ -131,6 +152,14 @@ export async function mountChrome(store: Store): Promise<void> {
   });
   document.addEventListener("keydown", (event) => {
     settingsModal.handleKeyDown(event);
+    if (
+      event.key === "Escape" &&
+      clockSolo &&
+      settingsOverlay.classList.contains("hidden")
+    ) {
+      clockSolo = false;
+      document.body.dataset.clockSolo = "false";
+    }
   });
   autostartToggle.addEventListener("change", () => {
     void changeAutostart();
@@ -159,6 +188,8 @@ export async function mountChrome(store: Store): Promise<void> {
     pinBtn.classList.toggle("active", store.state.pinned);
     pinBtn.setAttribute("aria-pressed", store.state.pinned ? "true" : "false");
     applyDragRegions(store.state.pinned);
+    if (!store.state.pinned || view !== "clock") clockSolo = false;
+    document.body.dataset.clockSolo = clockSolo ? "true" : "false";
   }
 
   function updateSize() {
@@ -268,7 +299,6 @@ async function getWindow() {
     return null;
   }
 }
-
 
 function createSnapHost(
   nativeWindow: NonNullable<Awaited<ReturnType<typeof getWindow>>>,
