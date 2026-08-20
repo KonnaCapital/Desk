@@ -138,7 +138,7 @@ body[data-pinned="true"] .chrome-left {
 }
 
 .icon-btn {
-  width: 26px;
+  width: 22px;
   height: 22px;
   padding: 0;
   display: grid;
@@ -146,6 +146,11 @@ body[data-pinned="true"] .chrome-left {
   color: var(--muted);
   background: transparent;
   border-color: transparent;
+}
+
+.icon-btn svg {
+  display: block;
+  overflow: visible;
 }
 
 button,
@@ -171,6 +176,7 @@ button,
 
 .persistence-status {
   max-width: min(32vw, 260px);
+  flex-shrink: 0;
   overflow: hidden;
   color: var(--muted);
   font-size: 10px;
@@ -347,7 +353,7 @@ button,
 
 .clock-digits {
   font-variant-numeric: tabular-nums;
-  font-weight: 200;
+  font-weight: 400;
   font-size: clamp(32px, min(18cqw, 70cqh), 220px);
   letter-spacing: 0.04em;
   line-height: 0.95;
@@ -358,6 +364,38 @@ button,
   cursor: pointer;
   white-space: nowrap;
   -webkit-app-region: no-drag;
+}
+
+.clock-sep {
+  font-weight: 600;
+  opacity: 0.92;
+  letter-spacing: 0;
+  padding: 0 0.06em;
+}
+
+.clock-hours[hidden] {
+  display: none;
+}
+
+body[data-clock-digits="stack"] .clock-digits {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  white-space: normal;
+  letter-spacing: 0;
+  line-height: 0.88;
+}
+
+body[data-clock-digits="stack"] .clock-sep {
+  font-size: 0.48em;
+  font-weight: 700;
+  line-height: 0.7;
+  opacity: 1;
+  color: var(--text);
+  margin: 0.02em 0;
+  padding: 0;
 }
 
 .clock-digits:hover {
@@ -526,6 +564,12 @@ body[data-size="xs"] .chrome {
 body[data-size="xs"] .clock-digits,
 body[data-timer="running"][data-size="xs"] .clock-digits {
   font-size: clamp(28px, min(22cqw, 60cqh), 88px);
+}
+
+body[data-clock-digits="stack"] .clock-digits,
+body[data-clock-digits="stack"][data-size="xs"] .clock-digits,
+body[data-timer="running"][data-clock-digits="stack"][data-size="xs"] .clock-digits {
+  font-size: clamp(48px, min(48cqw, 26cqh), 200px);
 }
 
 body[data-size="xs"] .clock-face {

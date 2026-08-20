@@ -3,8 +3,11 @@ import { describe, it } from "node:test";
 import {
   addToInbox,
   archiveDone,
+  clockDigitsLayout,
+  clockParts,
   COLUMNS,
   emptyState,
+  formatTime,
   hoursToDurationMs,
   isFinished,
   moveCard,
@@ -170,6 +173,43 @@ describe("sizeClass", () => {
   it("treats a short window as compact even when it is still wide", () => {
     assert.equal(sizeClass(1100, 160), "xs");
     assert.equal(sizeClass(1100, 720), "lg");
+  });
+});
+
+describe("clockDigitsLayout", () => {
+  it("stacks minutes over seconds in a tall narrow window", () => {
+    assert.equal(clockDigitsLayout(220, 700), "stack");
+  });
+
+  it("keeps one line in a wide, short, or square window", () => {
+    assert.equal(clockDigitsLayout(1100, 160), "row");
+    assert.equal(clockDigitsLayout(1100, 720), "row");
+    assert.equal(clockDigitsLayout(400, 400), "row");
+    assert.equal(clockDigitsLayout(400, 220), "row");
+  });
+
+  it("stacks in any window that is taller than it is wide", () => {
+    assert.equal(clockDigitsLayout(600, 800), "stack");
+    assert.equal(clockDigitsLayout(720, 900), "stack");
+  });
+});
+
+describe("clockParts", () => {
+  it("pads minutes and seconds and omits hours below one hour", () => {
+    assert.deepEqual(clockParts(58 * 60_000 + 12_000), {
+      hours: null,
+      minutes: "58",
+      seconds: "12",
+    });
+    assert.equal(formatTime(58 * 60_000 + 12_000), "58:12");
+  });
+
+  it("includes hours when the remaining time is at least an hour", () => {
+    assert.deepEqual(clockParts(3661_000), {
+      hours: "1",
+      minutes: "01",
+      seconds: "01",
+    });
   });
 });
 
@@ -460,20 +500,25 @@ describe("timer refresh scheduling", () => {
     const elements = new Map<string, Record<string, unknown>>();
     for (const selector of [
       "#clock-digits",
+      ".clock-hours",
+      ".clock-mins",
+      ".clock-secs",
       "#clock-progress-fill",
       "#clock-presets",
       "#custom-duration",
       "#hours-input",
       "#mins-input",
+      "#clock-duration-status",
       "#timer-toggle",
       "#timer-reset",
     ]) {
       elements.set(selector, {
         innerHTML: "",
         textContent: "",
+        hidden: true,
         dataset: {},
         style: {},
-        classList: { toggle() {} },
+        classList: { toggle() {}, add() {} },
         addEventListener() {},
         querySelectorAll() { return []; },
       });

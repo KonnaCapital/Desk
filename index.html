@@ -47,7 +47,12 @@
 
     <section id="clock-view" class="view clock-view hidden">
       <div class="clock-face">
-        <button type="button" id="clock-digits" class="clock-digits" aria-label="Start or pause the clock">25:00</button>
+        <button type="button" id="clock-digits" class="clock-digits" aria-label="Start or pause the clock">
+          <span class="clock-hours" hidden></span>
+          <span class="clock-mins">25</span>
+          <span class="clock-sep">:</span>
+          <span class="clock-secs">00</span>
+        </button>
         <div id="clock-presets" class="clock-presets"></div>
         <form id="custom-duration" class="custom-duration">
           <input id="hours-input" type="number" min="0" max="24" step="1" placeholder="0" aria-label="Hours" />

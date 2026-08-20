@@ -1,4 +1,4 @@
-import { sizeClass, type View } from "./model.ts";
+import { clockDigitsLayout, sizeClass, type View } from "./model.ts";
 import {
   AutostartController,
   loadAutostartApi,
@@ -150,6 +150,7 @@ export async function mountChrome(store: Store): Promise<void> {
     const size = sizeClass(window.innerWidth, window.innerHeight);
     document.body.dataset.view = view;
     document.body.dataset.size = size;
+    document.body.dataset.clockDigits = clockDigitsLayout(window.innerWidth, window.innerHeight);
     document.body.dataset.pinned = store.state.pinned ? "true" : "false";
     boardBtn.classList.toggle("active", view === "board");
     clockBtn.classList.toggle("active", view === "clock");
@@ -162,8 +163,13 @@ export async function mountChrome(store: Store): Promise<void> {
 
   function updateSize() {
     const next = sizeClass(window.innerWidth, window.innerHeight);
-    if (document.body.dataset.size !== next) {
-      document.body.dataset.size = next;
+    const clock = clockDigitsLayout(window.innerWidth, window.innerHeight);
+    const sizeChanged = document.body.dataset.size !== next;
+    const clockChanged = document.body.dataset.clockDigits !== clock;
+    if (!sizeChanged && !clockChanged) return;
+    document.body.dataset.size = next;
+    document.body.dataset.clockDigits = clock;
+    if (sizeChanged) {
       applyView(store.state.view);
       window.dispatchEvent(new Event("desk:resize"));
     }

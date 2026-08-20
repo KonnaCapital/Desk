@@ -1,9 +1,12 @@
-import { PRESETS, formatTime, hoursToDurationMs, remainingMs } from "./model.ts";
+import { PRESETS, clockParts, hoursToDurationMs, remainingMs } from "./model.ts";
 import { t } from "./i18n.ts";
 import type { Store } from "./store.ts";
 
 export function mountTimer(store: Store, onComplete: () => void): void {
   const digits = document.querySelector<HTMLButtonElement>("#clock-digits")!;
+  const hoursEl = document.querySelector<HTMLElement>(".clock-hours")!;
+  const minsEl = document.querySelector<HTMLElement>(".clock-mins")!;
+  const secsEl = document.querySelector<HTMLElement>(".clock-secs")!;
   const progressFill = document.querySelector<HTMLElement>("#clock-progress-fill")!;
   const presetsEl = document.querySelector<HTMLElement>("#clock-presets")!;
   const form = document.querySelector<HTMLFormElement>("#custom-duration")!;
@@ -53,7 +56,11 @@ export function mountTimer(store: Store, onComplete: () => void): void {
   function paint(now = Date.now()) {
     const { timer } = store.state;
     const rem = remainingMs(timer, now);
-    digits.textContent = formatTime(rem);
+    const parts = clockParts(rem);
+    hoursEl.hidden = parts.hours === null;
+    hoursEl.textContent = parts.hours ?? "";
+    minsEl.textContent = parts.minutes;
+    secsEl.textContent = parts.seconds;
     digits.classList.toggle("running", timer.running);
     digits.classList.toggle("done", rem === 0 && !timer.running);
     document.body.dataset.timer = timer.running ? "running" : rem === 0 ? "done" : "idle";

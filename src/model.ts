@@ -237,14 +237,44 @@ export function remainingMs(timer: TimerState, now = Date.now()): number {
 }
 
 export function formatTime(ms: number): string {
+  const parts = clockParts(ms);
+  return parts.hours
+    ? `${parts.hours}:${parts.minutes}:${parts.seconds}`
+    : `${parts.minutes}:${parts.seconds}`;
+}
+
+export type ClockParts = {
+  hours: string | null;
+  minutes: string;
+  seconds: string;
+};
+
+export function clockParts(ms: number): ClockParts {
   const total = Math.max(0, Math.ceil(ms / 1000));
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   if (h > 0) {
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    return {
+      hours: String(h),
+      minutes: String(m).padStart(2, "0"),
+      seconds: String(s).padStart(2, "0"),
+    };
   }
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return {
+    hours: null,
+    minutes: String(m).padStart(2, "0"),
+    seconds: String(s).padStart(2, "0"),
+  };
+}
+
+export type ClockDigitsLayout = "row" | "stack";
+
+/** Portrait clock: MM over SS. Landscape or square stay one line. */
+export function clockDigitsLayout(width: number, height: number): ClockDigitsLayout {
+  if (width <= 0 || height <= 0) return "row";
+  if (height > width) return "stack";
+  return "row";
 }
 
 export function setDuration(
