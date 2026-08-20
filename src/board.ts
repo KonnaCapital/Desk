@@ -9,6 +9,33 @@ import type { Store } from "./store.ts";
 
 const DRAG_THRESHOLD_PX = 5;
 
+export type DropHit = { column: Column; followNarrow: boolean };
+
+function columnFrom(value: string | undefined): Column | null {
+  return COLUMNS.some((col) => col.id === value) ? (value as Column) : null;
+}
+
+export function dropHitFromClosest(
+  closest: (selector: string) => { dataset: { column?: string } } | null,
+): DropHit | null {
+  const col = columnFrom(closest(".col[data-column]")?.dataset.column);
+  if (col) return { column: col, followNarrow: false };
+  const sw = columnFrom(closest(".column-switch [data-column]")?.dataset.column);
+  if (sw) return { column: sw, followNarrow: true };
+  return null;
+}
+
+export function applyCardDrop(
+  currentColumn: string | undefined,
+  hit: DropHit | null,
+): { moveTo: Column | null; followNarrow: boolean } {
+  if (!hit) return { moveTo: null, followNarrow: false };
+  return {
+    moveTo: hit.column !== currentColumn ? hit.column : null,
+    followNarrow: hit.followNarrow,
+  };
+}
+
 function escapeHtml(text: string): string {
   return text
     .replaceAll("&", "&amp;")
@@ -201,10 +228,7 @@ export function mountBoard(store: Store): void {
     }
     if (!dragId || !ghost) return;
     ghost.style.transform = `translate(${event.clientX - dragOffsetX}px, ${event.clientY - dragOffsetY}px)`;
-    const over = columnAt(event.clientX, event.clientY);
-    for (const col of boardEl.querySelectorAll(".col")) {
-      col.classList.toggle("drop-target", col === over);
-    }
+    paintDropTarget(hitAt(event.clientX, event.clientY));
   }
 
   function onPointerUp(event: PointerEvent) {
@@ -226,10 +250,10 @@ export function mountBoard(store: Store): void {
 
   function finishDrag(x: number, y: number, cancel = false) {
     if (!dragId) return;
-    const over = cancel ? null : columnAt(x, y);
-    if (over?.dataset.column && over.dataset.column !== findCardColumn(dragId)) {
-      store.moveCard(dragId, over.dataset.column as Column);
-    }
+    const hit = cancel ? null : hitAt(x, y);
+    const action = applyCardDrop(findCardColumn(dragId), hit);
+    if (action.moveTo) store.moveCard(dragId, action.moveTo);
+    if (action.followNarrow && hit) store.setNarrowColumn(hit.column);
     dragId = null;
     pending = null;
     ghost?.remove();
@@ -238,16 +262,26 @@ export function mountBoard(store: Store): void {
     window.removeEventListener("pointerup", onPointerUp);
     window.removeEventListener("pointercancel", onPointerCancel);
     boardEl.querySelectorAll(".card-dragging").forEach((el) => el.classList.remove("card-dragging"));
-    boardEl.querySelectorAll(".drop-target").forEach((el) => el.classList.remove("drop-target"));
+    paintDropTarget(null);
   }
 
   function findCardColumn(id: string): string | undefined {
     return store.state.cards.find((card) => card.id === id)?.column;
   }
 
-  function columnAt(x: number, y: number): HTMLElement | null {
+  function hitAt(x: number, y: number): DropHit | null {
     const node = document.elementFromPoint(x, y);
-    return node?.closest<HTMLElement>(".col") ?? null;
+    if (!(node instanceof Element)) return null;
+    return dropHitFromClosest((selector) => node.closest<HTMLElement>(selector));
+  }
+
+  function paintDropTarget(hit: DropHit | null) {
+    for (const col of boardEl.querySelectorAll<HTMLElement>(".col")) {
+      col.classList.toggle("drop-target", Boolean(hit && !hit.followNarrow && col.dataset.column === hit.column));
+    }
+    for (const btn of switchEl.querySelectorAll<HTMLElement>("[data-column]")) {
+      btn.classList.toggle("drop-target", Boolean(hit && hit.followNarrow && btn.dataset.column === hit.column));
+    }
   }
 
   function renderArchive() {

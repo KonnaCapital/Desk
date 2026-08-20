@@ -235,6 +235,11 @@ button,
   background: #262230;
 }
 
+.column-switch button.drop-target {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
 .col-head {
   display: flex;
   justify-content: space-between;
