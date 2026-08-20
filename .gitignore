@@ -32,3 +32,9 @@ scripts/
 .superpowers/
 output/
 .playwright-cli/
+
+# Local-only agent context. Not part of the published product.
+/AGENTS.md
+/CLAUDE.md
+/context/
+/.cursor/
