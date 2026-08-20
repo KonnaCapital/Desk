@@ -6,6 +6,7 @@ import {
 } from "./autostart.ts";
 import { registerCloseHandler, type CloseFlushResult } from "./close.ts";
 import { t } from "./i18n.ts";
+import { persistChromeCopy } from "./persist-status.ts";
 import { createModalController } from "./modal.ts";
 import { applyWindowPin } from "./pin.ts";
 import type { PersistenceState, Store } from "./store.ts";
@@ -29,6 +30,8 @@ export async function mountChrome(store: Store): Promise<void> {
   const chrome = document.querySelector<HTMLElement>(".chrome")!;
 
   let closeProtectionMessage: string | null = null;
+  let lastPersistStatus: PersistenceState["status"] | null = null;
+  let persistHideTimer: number | null = null;
   const nativeWindow = await getWindow();
   if (nativeWindow) {
     const registration = await registerCloseHandler(
@@ -176,19 +179,28 @@ export async function mountChrome(store: Store): Promise<void> {
   }
 
   function applyPersistenceStatus(state: PersistenceState) {
-    const message =
-      closeProtectionMessage ??
-      (state.status === "saving"
-        ? t("persistenceSaving")
-        : state.status === "recovered"
-          ? t("persistenceRecovered")
-          : state.status === "error"
-            ? `${t("persistenceError")} ${state.dataPath}`
-            : null);
-    const visible = message !== null;
-    persistenceStatus.classList.toggle("hidden", !visible);
+    const allowSavedFlash = lastPersistStatus === "saving" && state.status === "saved";
+    lastPersistStatus = state.status;
+    const copy = persistChromeCopy(
+      state.status,
+      closeProtectionMessage,
+      state.dataPath,
+      allowSavedFlash,
+    );
+    if (persistHideTimer !== null) {
+      window.clearTimeout(persistHideTimer);
+      persistHideTimer = null;
+    }
+    persistenceStatus.classList.toggle("hidden", copy.text === null);
     persistenceStatus.dataset.status = state.status;
-    persistenceStatus.textContent = message ?? "";
+    persistenceStatus.textContent = copy.text ?? "";
+    if (copy.hideAfterMs > 0) {
+      persistHideTimer = window.setTimeout(() => {
+        persistHideTimer = null;
+        persistenceStatus.classList.add("hidden");
+        persistenceStatus.textContent = "";
+      }, copy.hideAfterMs);
+    }
   }
 }
 
