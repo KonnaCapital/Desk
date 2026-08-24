@@ -15,7 +15,7 @@
         "title": "Desk",
         "width": 1100,
         "height": 720,
-        "minWidth": 160,
+        "minWidth": 300,
         "minHeight": 90,
         "decorations": false,
         "resizable": true,
