@@ -149,7 +149,7 @@ export class Store {
   private persist: Persist;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private listeners = new Set<() => void>();
-  private writesBlocked: boolean;
+  private blockWrites: boolean;
   private revision = 0;
   private lastQueuedRevision = 0;
   private lastSavedRevision = 0;
@@ -162,7 +162,7 @@ export class Store {
   ) {
     this.persist = persist;
     this.state = state;
-    this.writesBlocked = options.writesBlocked ?? false;
+    this.blockWrites = options.writesBlocked ?? false;
     this.persistence = options.persistence ?? {
       status: "saved",
       error: null,
@@ -246,6 +246,11 @@ export class Store {
     return this.persistence;
   }
 
+  /** True when both persist files failed to load; the board must not accept edits. */
+  get writesBlocked(): boolean {
+    return this.blockWrites;
+  }
+
   subscribe(fn: () => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
@@ -268,6 +273,7 @@ export class Store {
   }
 
   private commit(next: BoardState) {
+    if (this.blockWrites) return;
     this.state = next;
     this.revision += 1;
     this.emit();
@@ -275,7 +281,7 @@ export class Store {
   }
 
   private scheduleSave() {
-    if (this.writesBlocked) return;
+    if (this.blockWrites) return;
     this.setPersistence("saving");
     if (this.saveTimer) clearTimeout(this.saveTimer);
     this.saveTimer = setTimeout(() => {
@@ -285,7 +291,7 @@ export class Store {
   }
 
   private enqueueSave(): Promise<FlushOutcome> {
-    if (this.writesBlocked) return Promise.resolve("error");
+    if (this.blockWrites) return Promise.resolve("error");
     if (this.revision <= this.lastQueuedRevision) {
       return this.saveChain;
     }
@@ -295,7 +301,7 @@ export class Store {
     this.lastQueuedRevision = revision;
 
     const job = this.saveChain.then(async (): Promise<FlushOutcome> => {
-      if (this.writesBlocked) return "error";
+      if (this.blockWrites) return "error";
       try {
         await this.persist.save(json);
         this.lastSavedRevision = Math.max(this.lastSavedRevision, revision);
@@ -322,7 +328,7 @@ export class Store {
       clearTimeout(this.saveTimer);
       this.saveTimer = null;
     }
-    if (this.writesBlocked) return "error";
+    if (this.blockWrites) return "error";
 
     while (true) {
       const targetRevision = this.revision;

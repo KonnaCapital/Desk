@@ -260,6 +260,7 @@ export async function mountChrome(store: Store): Promise<void> {
       closeProtectionMessage,
       state.dataPath,
       allowSavedFlash,
+      state.error,
     );
     if (persistHideTimer !== null) {
       window.clearTimeout(persistHideTimer);

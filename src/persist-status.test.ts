@@ -26,4 +26,15 @@ describe("persistChromeCopy", () => {
     assert.equal(copy.text, "Save timed out; closing now.");
     assert.equal(copy.hideAfterMs, 0);
   });
+
+  it("shows the load error, not a fake save failure", () => {
+    const copy = persistChromeCopy(
+      "error",
+      null,
+      "board.json",
+      false,
+      "Desk data could not be loaded safely. Data path: board.json",
+    );
+    assert.equal(copy.text, "Desk data could not be loaded safely. Data path: board.json");
+  });
 });

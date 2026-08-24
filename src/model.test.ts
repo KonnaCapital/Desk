@@ -341,8 +341,12 @@ describe("Store", () => {
     const before = persist as unknown as { primary: string; backup: string };
 
     assert.equal(persistenceOf(store).status, "error");
+    assert.match(persistenceOf(store).error ?? "", /could not be loaded/);
+    assert.equal(store.writesBlocked, true);
     store.addToInbox("must not overwrite corrupt files");
     await store.flush();
+
+    assert.equal(store.state.cards.length, 0);
 
     assert.equal(before.primary, "{ malformed");
     assert.equal(before.backup, "[ malformed");
@@ -358,6 +362,8 @@ describe("Store", () => {
     assert.equal(persistenceOf(store).status, "error");
     store.addToInbox("must not overwrite structurally invalid files");
     await store.flush();
+
+    assert.equal(store.state.cards.length, 0);
 
     assert.equal(before.primary, primary);
     assert.equal(before.backup, backup);
@@ -378,7 +384,7 @@ describe("Store", () => {
     assert.equal(persistenceOf(store).status, "error");
     store.addToInbox("must not write");
     await store.flush();
-    assert.equal(store.state.cards.length, 1);
+    assert.equal(store.state.cards.length, 0);
   });
 
   it("blocks writes when a persistence envelope is incomplete", async () => {

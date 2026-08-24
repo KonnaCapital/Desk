@@ -74,8 +74,13 @@ export function mountBoard(store: Store): void {
   let dragOffsetY = 0;
   let editingId: string | null = null;
 
+  if (store.writesBlocked) {
+    input.disabled = true;
+  }
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
+    if (store.writesBlocked) return;
     store.addToInbox(input.value);
     input.value = "";
     input.focus();
