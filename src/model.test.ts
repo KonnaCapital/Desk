@@ -10,6 +10,7 @@ import {
   formatTime,
   hoursToDurationMs,
   isFinished,
+  isStateEnvelope,
   moveCard,
   parseState,
   pauseTimer,
@@ -48,7 +49,13 @@ function snapshotPersist(
       return { primary: currentPrimary, backup: currentBackup } as unknown as string | null;
     },
     async save(json: string) {
-      if (currentPrimary !== null) currentBackup = currentPrimary;
+      if (currentPrimary !== null) {
+        try {
+          if (isStateEnvelope(JSON.parse(currentPrimary))) currentBackup = currentPrimary;
+        } catch {
+          /* keep backup when the primary is not a valid board */
+        }
+      }
       currentPrimary = json;
     },
   } as Persist & { primary: string | null; backup: string | null };
@@ -65,10 +72,13 @@ function persistenceOf(store: Store): {
 
 async function assertRecoversFromInvalidPrimary(primary: string): Promise<void> {
   const backupState = JSON.stringify({ ...emptyState(), pinned: false });
-  const store = await Store.load(snapshotPersist(primary, backupState));
+  const persist = snapshotPersist(primary, backupState);
+  const store = await Store.load(persist);
 
   assert.equal(store.state.pinned, false);
   assert.equal(persistenceOf(store).status, "recovered");
+  assert.equal(JSON.parse((persist as { primary: string }).primary).pinned, false);
+  assert.equal((persist as { backup: string }).backup, backupState);
 }
 
 describe("addToInbox", () => {
@@ -328,10 +338,15 @@ describe("Store", () => {
     const backupState = JSON.stringify({ ...emptyState(), pinned: false });
     const persist = createMemoryPersist(JSON.stringify({}), backupState);
     const store = await Store.load(persist);
+
+    assert.equal(persistenceOf(store).status, "recovered");
+    assert.equal(JSON.parse(persist.primary!).pinned, false);
+    assert.equal(persist.backup, backupState);
+
     store.setPinned(true);
     await store.flush();
 
-    assert.equal(persist.backup, backupState);
+    assert.equal(JSON.parse(persist.backup!).pinned, false);
     assert.equal(JSON.parse(persist.primary!).pinned, true);
   });
 

@@ -212,13 +212,15 @@ export class Store {
 
     const backup = decode(snapshot.backup);
     if (backup.kind === "valid") {
-      return new Store(persist, backup.state, {
+      const store = new Store(persist, backup.state, {
         persistence: {
           status: "recovered",
           error: null,
           dataPath: snapshot.dataPath ?? fallbackPath,
         },
       });
+      await store.rewritePrimaryKeepingRecovered();
+      return store;
     }
 
     if (primary.kind === "malformed" || backup.kind === "malformed") {
@@ -249,6 +251,19 @@ export class Store {
   /** True when both persist files failed to load; the board must not accept edits. */
   get writesBlocked(): boolean {
     return this.blockWrites;
+  }
+
+  private async rewritePrimaryKeepingRecovered(): Promise<void> {
+    if (this.blockWrites) return;
+    this.revision += 1;
+    const json = JSON.stringify(this.state, null, 2);
+    this.lastQueuedRevision = this.revision;
+    try {
+      await this.persist.save(json);
+      this.lastSavedRevision = this.revision;
+    } catch {
+      this.setPersistence("error", saveError(this.persistence.dataPath));
+    }
   }
 
   subscribe(fn: () => void): () => void {
