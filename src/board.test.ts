@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applyCardDrop, dropHitFromClosest } from "./board.ts";
+import { applyCardDrop, dropHitFromClosest, shouldHoldBoardPaint } from "./board.ts";
 
 type Hit = { dataset: { column?: string } };
 
@@ -67,5 +67,13 @@ describe("applyCardDrop", () => {
       moveTo: null,
       followNarrow: false,
     });
+  });
+});
+
+describe("shouldHoldBoardPaint", () => {
+  it("holds the board DOM while editing or dragging", () => {
+    assert.equal(shouldHoldBoardPaint(null, null), false);
+    assert.equal(shouldHoldBoardPaint("card-1", null), true);
+    assert.equal(shouldHoldBoardPaint(null, "card-1"), true);
   });
 });

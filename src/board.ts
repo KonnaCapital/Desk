@@ -36,6 +36,10 @@ export function applyCardDrop(
   };
 }
 
+export function shouldHoldBoardPaint(editingId: string | null, dragId: string | null): boolean {
+  return editingId != null || dragId != null;
+}
+
 function escapeHtml(text: string): string {
   return text
     .replaceAll("&", "&amp;")
@@ -255,10 +259,9 @@ export function mountBoard(store: Store): void {
 
   function finishDrag(x: number, y: number, cancel = false) {
     if (!dragId) return;
+    const id = dragId;
     const hit = cancel ? null : hitAt(x, y);
-    const action = applyCardDrop(findCardColumn(dragId), hit);
-    if (action.moveTo) store.moveCard(dragId, action.moveTo);
-    if (action.followNarrow && hit) store.setNarrowColumn(hit.column);
+    const action = applyCardDrop(findCardColumn(id), hit);
     dragId = null;
     pending = null;
     ghost?.remove();
@@ -268,6 +271,9 @@ export function mountBoard(store: Store): void {
     window.removeEventListener("pointercancel", onPointerCancel);
     boardEl.querySelectorAll(".card-dragging").forEach((el) => el.classList.remove("card-dragging"));
     paintDropTarget(null);
+    if (action.moveTo) store.moveCard(id, action.moveTo);
+    if (action.followNarrow && hit) store.setNarrowColumn(hit.column);
+    render();
   }
 
   function findCardColumn(id: string): string | undefined {
@@ -305,7 +311,7 @@ export function mountBoard(store: Store): void {
   }
 
   function render() {
-    if (editingId) return;
+    if (shouldHoldBoardPaint(editingId, dragId)) return;
     const size = document.body.dataset.size as SizeClass | undefined;
     const narrow = size === "sm" || size === "xs";
     switchEl.innerHTML = COLUMNS.map(
