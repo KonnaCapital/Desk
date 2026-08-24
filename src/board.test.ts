@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applyCardDrop, dropHitFromClosest, shouldHoldBoardPaint } from "./board.ts";
+import { applyCardDrop, dropHitFromClosest, overlayEscapeTarget, shouldHoldBoardPaint } from "./board.ts";
 
 type Hit = { dataset: { column?: string } };
 
@@ -75,5 +75,13 @@ describe("shouldHoldBoardPaint", () => {
     assert.equal(shouldHoldBoardPaint(null, null), false);
     assert.equal(shouldHoldBoardPaint("card-1", null), true);
     assert.equal(shouldHoldBoardPaint(null, "card-1"), true);
+  });
+});
+
+describe("overlayEscapeTarget", () => {
+  it("closes confirm before archive, and ignores when both are hidden", () => {
+    assert.equal(overlayEscapeTarget(false, false), "confirm");
+    assert.equal(overlayEscapeTarget(true, false), "archive");
+    assert.equal(overlayEscapeTarget(true, true), null);
   });
 });

@@ -40,6 +40,12 @@ export function shouldHoldBoardPaint(editingId: string | null, dragId: string | 
   return editingId != null || dragId != null;
 }
 
+export function overlayEscapeTarget(confirmHidden: boolean, archiveHidden: boolean): "confirm" | "archive" | null {
+  if (!confirmHidden) return "confirm";
+  if (!archiveHidden) return "archive";
+  return null;
+}
+
 function escapeHtml(text: string): string {
   return text
     .replaceAll("&", "&amp;")
@@ -97,6 +103,19 @@ export function mountBoard(store: Store): void {
     if (target?.isContentEditable) return;
     event.preventDefault();
     input.focus();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (editingId) return;
+    const which = overlayEscapeTarget(
+      confirmOverlay.classList.contains("hidden"),
+      overlay.classList.contains("hidden"),
+    );
+    if (!which) return;
+    event.preventDefault();
+    if (which === "confirm") confirmOverlay.classList.add("hidden");
+    else overlay.classList.add("hidden");
   });
 
   archiveDoneBtn.addEventListener("click", () => {
@@ -190,6 +209,7 @@ export function mountBoard(store: Store): void {
     }
     if (event.key === "Escape") {
       event.preventDefault();
+      event.stopPropagation();
       finishEdit(event.currentTarget as HTMLElement, false);
     }
   }
