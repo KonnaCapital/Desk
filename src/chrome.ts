@@ -19,7 +19,7 @@ import {
   nextClockSolo,
   shouldBlockTimerToggle,
 } from "./clock-solo.ts";
-import { applyWindowPin } from "./pin.ts";
+import { WindowPinController } from "./pin.ts";
 import type { PersistenceState, Store } from "./store.ts";
 
 export async function mountChrome(store: Store): Promise<void> {
@@ -48,6 +48,8 @@ export async function mountChrome(store: Store): Promise<void> {
   let movedQuietTimer: number | null = null;
   let clockSolo = false;
   const nativeWindow = await getWindow();
+  const pinController = new WindowPinController(nativeWindow);
+  let pinError: string | null = null;
   if (nativeWindow) {
     const registration = await registerCloseHandler(
       nativeWindow,
@@ -120,10 +122,25 @@ export async function mountChrome(store: Store): Promise<void> {
 
   boardBtn.addEventListener("click", () => store.setView("board"));
   clockBtn.addEventListener("click", () => store.setView("clock"));
-  pinBtn.addEventListener("click", () => {
+  pinBtn.addEventListener("click", async () => {
+    if (store.writesBlocked) return;
+    pinBtn.disabled = true;
     const next = !store.state.pinned;
-    void applyPin(next, nativeWindow);
-    store.setPinned(next);
+    try {
+      await pinController.apply(next);
+      pinError = null;
+      store.setPinned(next);
+    } catch {
+      pinError = t("pinChangeError");
+      try {
+        await pinController.apply(store.state.pinned);
+      } catch {
+        // Keep the error visible if restoring the previous native state also fails.
+      }
+    } finally {
+      pinBtn.disabled = false;
+      applyPersistenceStatus(store.persistenceStatus);
+    }
   });
 
   clockView.addEventListener(
@@ -212,11 +229,23 @@ export async function mountChrome(store: Store): Promise<void> {
 
   store.subscribe(() => {
     applyView(store.state.view);
-    void applyPin(store.state.pinned, nativeWindow);
     applyPersistenceStatus(store.persistenceStatus);
   });
   applyView(store.state.view);
-  void applyPin(store.state.pinned, nativeWindow);
+  pinBtn.disabled = true;
+  try {
+    await pinController.apply(store.state.pinned);
+  } catch {
+    pinError = t("pinChangeError");
+    try {
+      await pinController.apply(false);
+      if (store.state.pinned) store.setPinned(false);
+    } catch {
+      // Keep the error visible if the native default cannot be restored.
+    }
+  } finally {
+    pinBtn.disabled = false;
+  }
   applyPersistenceStatus(store.persistenceStatus);
 
   async function openSettings() {
@@ -258,7 +287,7 @@ export async function mountChrome(store: Store): Promise<void> {
     lastPersistStatus = state.status;
     const copy = persistChromeCopy(
       state.status,
-      closeProtectionMessage,
+      closeProtectionMessage ?? (state.status === "error" ? null : pinError),
       state.dataPath,
       allowSavedFlash,
       state.error,
@@ -268,8 +297,9 @@ export async function mountChrome(store: Store): Promise<void> {
       persistHideTimer = null;
     }
     persistenceStatus.classList.toggle("hidden", copy.text === null);
-    persistenceStatus.dataset.status = state.status;
+    persistenceStatus.dataset.status = pinError ? "error" : state.status;
     persistenceStatus.textContent = copy.text ?? "";
+    persistenceStatus.title = copy.text ?? "";
     if (copy.hideAfterMs > 0) {
       persistHideTimer = window.setTimeout(() => {
         persistHideTimer = null;
@@ -333,18 +363,5 @@ function applyDragRegions(pinned: boolean) {
   for (const el of regions) {
     if (pinned) el.removeAttribute("data-tauri-drag-region");
     else el.setAttribute("data-tauri-drag-region", "");
-  }
-}
-
-async function applyPin(
-  pinned: boolean,
-  current: Awaited<ReturnType<typeof getWindow>> | null = null,
-) {
-  const windowApi = current ?? (await getWindow());
-  if (!windowApi) return;
-  try {
-    await applyWindowPin(windowApi, pinned);
-  } catch {
-    // Browser preview has no window chrome.
   }
 }
