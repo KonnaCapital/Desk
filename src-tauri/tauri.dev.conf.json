@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Desk Dev",
+  "identifier": "com.konnacapital.desk.dev",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Desk Dev",
+        "width": 1100,
+        "height": 720,
+        "minWidth": 300,
+        "minHeight": 90,
+        "decorations": false,
+        "resizable": true,
+        "shadow": true,
+        "alwaysOnTop": false
+      }
+    ]
+  }
+}
