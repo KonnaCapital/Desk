@@ -72,19 +72,19 @@
       </div>
     </section>
 
-    <div id="archive-overlay" class="overlay hidden">
+    <div id="archive-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="archive-title">
       <div class="overlay-card">
         <header>
-          <h2>Archive</h2>
+          <h2 id="archive-title">Archive</h2>
           <button type="button" id="close-archive">Close</button>
         </header>
         <ul id="archive-list"></ul>
       </div>
     </div>
 
-    <div id="archive-confirm-overlay" class="overlay hidden" role="dialog" aria-modal="true">
+    <div id="archive-confirm-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="archive-confirm-title">
       <div class="overlay-card settings-card">
-        <p>Archive all cards in Done?</p>
+        <p id="archive-confirm-title">Archive all cards in Done?</p>
         <div class="board-footer">
           <button type="button" id="archive-confirm-cancel">Cancel</button>
           <button type="button" id="archive-confirm-ok" class="primary">Archive Done</button>

@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applyCardDrop, dropHitFromClosest, overlayEscapeTarget, shouldHoldBoardPaint } from "./board.ts";
+import {
+  applyCardDrop,
+  dropHitFromClosest,
+  escapeHtml,
+  overlayEscapeTarget,
+  shouldHoldBoardPaint,
+} from "./board.ts";
 
 type Hit = { dataset: { column?: string } };
 
@@ -75,6 +81,13 @@ describe("shouldHoldBoardPaint", () => {
     assert.equal(shouldHoldBoardPaint(null, null), false);
     assert.equal(shouldHoldBoardPaint("card-1", null), true);
     assert.equal(shouldHoldBoardPaint(null, "card-1"), true);
+    assert.equal(shouldHoldBoardPaint(null, null, "card-1"), true);
+  });
+});
+
+describe("escapeHtml", () => {
+  it("escapes text used in HTML attributes as well as card content", () => {
+    assert.equal(escapeHtml('<img data-id="unsafe">'), "&lt;img data-id=&quot;unsafe&quot;&gt;");
   });
 });
 

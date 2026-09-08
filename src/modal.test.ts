@@ -29,3 +29,23 @@ describe("settings modal focus", () => {
     assert.deepEqual(calls, ["inside", "prevented", "inside", "inside", "trigger"]);
   });
 });
+
+describe("modal focus containment", () => {
+  it("cycles Tab within the modal and works when the handler is detached", () => {
+    const calls: string[] = [];
+    const trigger = { focus: () => calls.push("trigger") };
+    const first = { focus: () => calls.push("first") };
+    const last = { focus: () => calls.push("last") };
+    const root = { querySelectorAll: () => [first, last] };
+    const modal = createModalController(trigger, first, () => {}, root);
+    const handleKeyDown = modal.handleKeyDown;
+
+    modal.open();
+    assert.equal(handleKeyDown({ key: "Tab", preventDefault: () => calls.push("prevented") }), true);
+    assert.equal(
+      handleKeyDown({ key: "Tab", shiftKey: true, preventDefault: () => calls.push("prevented") }),
+      true,
+    );
+    assert.deepEqual(calls, ["first", "prevented", "last", "prevented", "first"]);
+  });
+});

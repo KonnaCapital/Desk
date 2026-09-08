@@ -76,6 +76,7 @@ export async function mountChrome(store: Store): Promise<void> {
       settingsOverlay.classList.toggle("hidden", !open);
       settingsBtn.setAttribute("aria-expanded", String(open));
     },
+    settingsOverlay,
   );
 
   const beginDrag = (event: MouseEvent) => {
