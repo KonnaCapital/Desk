@@ -236,6 +236,12 @@ export async function mountChrome(store: Store): Promise<void> {
     await pinController.apply(store.state.pinned);
   } catch {
     pinError = t("pinChangeError");
+    try {
+      await pinController.apply(false);
+      if (store.state.pinned) store.setPinned(false);
+    } catch {
+      // Keep the error visible if the native default cannot be restored.
+    }
   } finally {
     pinBtn.disabled = false;
   }
