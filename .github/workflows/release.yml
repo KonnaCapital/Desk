@@ -9,8 +9,15 @@ permissions:
   contents: read
 
 jobs:
+  verify:
+    name: Verify release source
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
   windows-release:
     name: Windows x64 NSIS and draft
+    needs: verify
     runs-on: windows-latest
     permissions:
       contents: write
