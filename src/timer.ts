@@ -1,4 +1,4 @@
-import { PRESETS, clockParts, hoursToDurationMs, remainingMs } from "./model.ts";
+import { PRESETS, clockParts, formatTime, hoursToDurationMs, remainingMs } from "./model.ts";
 import { t } from "./i18n.ts";
 import type { Store } from "./store.ts";
 
@@ -52,6 +52,7 @@ export function mountTimer(store: Store, onComplete: () => void): void {
 
   let completedFor: number | null = null;
   let refreshTimer: number | null = null;
+  let displayedDuration: number | null = null;
 
   function paint(now = Date.now()) {
     const { timer } = store.state;
@@ -59,6 +60,8 @@ export function mountTimer(store: Store, onComplete: () => void): void {
     const parts = clockParts(rem);
     hoursEl.hidden = parts.hours === null;
     hoursEl.textContent = parts.hours ?? "";
+    digits.dataset.hours = String(parts.hours !== null);
+    digits.setAttribute("aria-label", `${timer.running ? t("pause") : t("start")}: ${formatTime(rem)}`);
     minsEl.textContent = parts.minutes;
     secsEl.textContent = parts.seconds;
     digits.classList.toggle("running", timer.running);
@@ -67,6 +70,11 @@ export function mountTimer(store: Store, onComplete: () => void): void {
     const ratio = timer.durationMs > 0 ? rem / timer.durationMs : 0;
     progressFill.style.transform = `scaleX(${Math.max(0, Math.min(1, ratio))})`;
     toggle.textContent = timer.running ? t("pause") : t("start");
+    if (displayedDuration !== timer.durationMs) {
+      displayedDuration = timer.durationMs;
+      hoursInput.value = String(Math.floor(timer.durationMs / 3_600_000));
+      minsInput.value = String(Math.floor(timer.durationMs / 60_000) % 60);
+    }
     presetsEl.querySelectorAll("button").forEach((btn) => {
       btn.classList.toggle("active", Number(btn.dataset.ms) === timer.durationMs);
     });
@@ -96,7 +104,7 @@ export function mountTimer(store: Store, onComplete: () => void): void {
     const rem = remainingMs(store.state.timer, now);
     if (rem <= 0) return;
 
-    const untilNextSecond = Math.max(1, 1000 - (now % 1000));
+    const untilNextSecond = rem % 1000 || 1000;
     refreshTimer = window.setTimeout(() => {
       refreshTimer = null;
       paint();

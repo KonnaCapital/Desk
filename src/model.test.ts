@@ -541,6 +541,7 @@ describe("timer refresh scheduling", () => {
         style: {},
         classList: { toggle() {}, add() {} },
         addEventListener() {},
+        setAttribute() {},
         querySelectorAll() { return []; },
       });
     }
