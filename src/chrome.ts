@@ -59,8 +59,8 @@ export async function mountChrome(store: Store): Promise<void> {
     const registration = await registerCloseHandler(
       nativeWindow,
       () => {
-        // Native close requests do not necessarily blur an active card editor.
-        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        // Commit an editor even when the native webview does not deliver blur.
+        window.dispatchEvent(new Event("desk:before-close"));
         // A blocked load has accepted no edits and must remain closable.
         return store.writesBlocked ? Promise.resolve("saved" as const) : store.flush();
       },
