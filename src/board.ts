@@ -88,6 +88,7 @@ export function mountBoard(store: Store): void {
   let pending:
     | {
         id: string;
+        pointerId: number;
         cardEl: HTMLElement;
         startX: number;
         startY: number;
@@ -100,6 +101,8 @@ export function mountBoard(store: Store): void {
   let dragOffsetX = 0;
   let dragOffsetY = 0;
   let editingId: string | null = null;
+  let capturedCard: HTMLElement | null = null;
+  let capturedPointerId: number | null = null;
   let deferredPaint = false;
   let lastRenderedCards = store.state.cards;
   let lastRenderedNarrowColumn = store.state.narrowColumn;
@@ -188,6 +191,7 @@ export function mountBoard(store: Store): void {
 
   boardEl.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
+    if (pending || dragId) return;
     const target = event.target as HTMLElement;
     if (target.closest("button") || target.isContentEditable) return;
     const cardEl = target.closest<HTMLElement>(".card");
@@ -197,16 +201,27 @@ export function mountBoard(store: Store): void {
     const rect = cardEl.getBoundingClientRect();
     pending = {
       id,
+      pointerId: event.pointerId,
       cardEl,
       startX: event.clientX,
       startY: event.clientY,
       offsetX: event.clientX - rect.left,
       offsetY: event.clientY - rect.top,
     };
+    capturedCard = cardEl;
+    capturedPointerId = event.pointerId;
+    cardEl.addEventListener("lostpointercapture", onLostPointerCapture);
+    try {
+      cardEl.setPointerCapture(event.pointerId);
+    } catch {
+      // The window-level listeners and blur cleanup remain as a fallback.
+    }
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerCancel);
   });
+
+  window.addEventListener("blur", cancelActivePointer);
 
   function beginEdit(cardEl: HTMLElement) {
     if (!cardEl.isConnected) return;
@@ -285,7 +300,8 @@ export function mountBoard(store: Store): void {
   }
 
   function onPointerMove(event: PointerEvent) {
-    if (pending && !dragId && distance(event.clientX, event.clientY) >= DRAG_THRESHOLD_PX) {
+    if (!pending || event.pointerId !== pending.pointerId) return;
+    if (!dragId && distance(event.clientX, event.clientY) >= DRAG_THRESHOLD_PX) {
       startDrag();
     }
     if (!dragId || !ghost) return;
@@ -294,18 +310,47 @@ export function mountBoard(store: Store): void {
   }
 
   function onPointerUp(event: PointerEvent) {
+    if (!pending || event.pointerId !== pending.pointerId) return;
     if (dragId) finishDrag(event.clientX, event.clientY);
     else cancelPending();
   }
 
-  function onPointerCancel() {
+  function onPointerCancel(event: PointerEvent) {
+    if (!pending || event.pointerId !== pending.pointerId) return;
     if (dragId) finishDrag(0, 0, true);
     else cancelPending();
+  }
+
+  function onLostPointerCapture(event: PointerEvent) {
+    if (event.pointerId !== capturedPointerId || !pending) return;
+    if (dragId) finishDrag(0, 0, true);
+    else cancelPending();
+  }
+
+  function clearPointerCapture() {
+    const cardEl = capturedCard;
+    const pointerId = capturedPointerId;
+    capturedCard = null;
+    capturedPointerId = null;
+    if (!cardEl) return;
+    cardEl.removeEventListener("lostpointercapture", onLostPointerCapture);
+    if (pointerId === null) return;
+    try {
+      if (cardEl.hasPointerCapture(pointerId)) cardEl.releasePointerCapture(pointerId);
+    } catch {
+      // The pointer may already have been cancelled or the card detached.
+    }
+  }
+
+  function cancelActivePointer() {
+    if (dragId) finishDrag(0, 0, true);
+    else if (pending) cancelPending();
   }
 
   function cancelPending() {
     const hadPending = pending != null;
     pending = null;
+    clearPointerCapture();
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
     window.removeEventListener("pointercancel", onPointerCancel);
@@ -318,6 +363,7 @@ export function mountBoard(store: Store): void {
     const hit = cancel ? null : hitAt(x, y);
     const action = applyCardDrop(findCardColumn(id), hit);
     pending = null;
+    clearPointerCapture();
     ghost?.remove();
     ghost = null;
     window.removeEventListener("pointermove", onPointerMove);
