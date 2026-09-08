@@ -58,8 +58,12 @@ export async function mountChrome(store: Store): Promise<void> {
   if (nativeWindow) {
     const registration = await registerCloseHandler(
       nativeWindow,
-      // A blocked load has accepted no edits and must remain closable.
-      () => store.writesBlocked ? Promise.resolve("saved" as const) : store.flush(),
+      () => {
+        // Native close requests do not necessarily blur an active card editor.
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        // A blocked load has accepted no edits and must remain closable.
+        return store.writesBlocked ? Promise.resolve("saved" as const) : store.flush();
+      },
       (result: Exclude<CloseFlushResult, "flushed">) => {
         closeProblemShown = true;
         closeProtectionMessage =
