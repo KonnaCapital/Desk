@@ -110,8 +110,13 @@ input:focus {
 }
 
 .chrome-left {
+  flex-shrink: 0;
   cursor: grab;
   -webkit-app-region: drag;
+}
+
+.chrome-right {
+  min-width: 0;
 }
 
 body[data-pinned="true"] .chrome-left {
@@ -138,6 +143,7 @@ body[data-pinned="true"] .chrome-left {
 }
 
 .icon-btn {
+  flex-shrink: 0;
   width: 22px;
   height: 22px;
   padding: 0;
@@ -176,7 +182,8 @@ button,
 
 .persistence-status {
   max-width: min(32vw, 260px);
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
   overflow: hidden;
   color: var(--muted);
   font-size: 10px;
@@ -272,6 +279,8 @@ button,
 }
 
 .card {
+  min-width: 0;
+  overflow-wrap: anywhere;
   background: var(--bg-card);
   border: 1px solid #303030;
   border-radius: var(--radius);
@@ -352,9 +361,16 @@ button,
 }
 
 .clock-digits {
+  --digit-width: 18cqw;
+  --digit-height: calc(100cqh - 196px);
+  --digit-max: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   font-variant-numeric: tabular-nums;
   font-weight: 400;
-  font-size: clamp(32px, min(18cqw, 70cqh), 220px);
+  font-size: max(20px, min(var(--digit-width), var(--digit-height), var(--digit-max)));
   letter-spacing: 0.04em;
   line-height: 0.95;
   background: none;
@@ -364,6 +380,26 @@ button,
   cursor: pointer;
   white-space: nowrap;
   -webkit-app-region: no-drag;
+}
+
+.clock-digits[data-hours="true"] {
+  --digit-width: 13cqw;
+}
+
+.clock-hours::after {
+  content: ":";
+  font-weight: 600;
+}
+
+body[data-clock-digits="stack"] .clock-hours::after {
+  content: "h";
+  font-size: 0.35em;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+body[data-timer="running"] .clock-digits {
+  --digit-height: calc(100cqh - 40px);
 }
 
 .clock-sep {
@@ -561,20 +597,33 @@ body[data-size="xs"] .chrome {
   padding-left: 6px;
 }
 
-body[data-size="xs"] .clock-digits,
-body[data-timer="running"][data-size="xs"] .clock-digits {
-  font-size: clamp(28px, min(22cqw, 60cqh), 88px);
+body[data-size="xs"] .clock-digits {
+  --digit-height: calc(100cqh - 28px);
+  --digit-max: 88px;
 }
 
-body[data-clock-digits="stack"] .clock-digits,
-body[data-clock-digits="stack"][data-size="xs"] .clock-digits,
-body[data-timer="running"][data-clock-digits="stack"][data-size="xs"] .clock-digits {
-  font-size: clamp(48px, min(48cqw, 26cqh), 200px);
+body[data-clock-digits="stack"] .clock-digits {
+  --digit-width: 48cqw;
+  --digit-height: calc((100cqh - 196px) / 2.2);
+  --digit-max: 200px;
+}
+
+body[data-clock-digits="stack"] .clock-digits[data-hours="true"] {
+  --digit-height: calc((100cqh - 196px) / 3.2);
+}
+
+body[data-timer="running"][data-clock-digits="stack"] .clock-digits {
+  --digit-height: calc((100cqh - 40px) / 2.2);
+}
+
+body[data-timer="running"][data-clock-digits="stack"] .clock-digits[data-hours="true"] {
+  --digit-height: calc((100cqh - 40px) / 3.2);
 }
 
 body[data-size="xs"] .clock-face {
+  flex-direction: row;
   gap: 8px;
-  padding: 4px;
+  padding: 4px 8px 22px;
 }
 
 body[data-size="xs"] .capture {
@@ -584,6 +633,18 @@ body[data-size="xs"] .capture {
 body[data-view="clock"][data-size="xs"] .clock-actions .primary,
 body[data-view="clock"][data-size="xs"] .clock-digits {
   min-width: 0;
+}
+
+@container (max-height: 210px) {
+  body:not([data-size="xs"]) .custom-duration,
+  body:not([data-size="xs"]) #clock-duration-status {
+    display: none;
+  }
+
+  body:not([data-size="xs"])[data-timer="idle"] .clock-digits,
+  body:not([data-size="xs"])[data-timer="done"] .clock-digits {
+    --digit-height: calc(100cqh - 144px);
+  }
 }
 
 body[data-clock-solo="true"] {
@@ -641,12 +702,20 @@ body[data-clock-solo="true"] .clock-face {
 }
 
 body[data-clock-solo="true"] .clock-digits {
-  font-size: clamp(40px, min(26cqw, 78cqh), 280px);
+  --digit-width: 26cqw;
+  --digit-height: calc(100cqh - 36px);
+  --digit-max: 280px;
 }
 
-body[data-clock-solo="true"][data-clock-digits="stack"] .clock-digits,
-body[data-clock-solo="true"][data-size="xs"] .clock-digits,
-body[data-clock-solo="true"][data-clock-digits="stack"][data-size="xs"] .clock-digits,
-body[data-timer="running"][data-clock-solo="true"][data-size="xs"] .clock-digits {
-  font-size: clamp(56px, min(56cqw, 34cqh), 280px);
+body[data-clock-solo="true"] .clock-digits[data-hours="true"] {
+  --digit-width: 17cqw;
+}
+
+body[data-clock-solo="true"][data-clock-digits="stack"] .clock-digits {
+  --digit-width: 56cqw;
+  --digit-height: calc((100cqh - 36px) / 2.2);
+}
+
+body[data-clock-solo="true"][data-clock-digits="stack"] .clock-digits[data-hours="true"] {
+  --digit-height: calc((100cqh - 36px) / 3.2);
 }
