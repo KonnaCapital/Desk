@@ -107,5 +107,14 @@
         <p id="settings-data-folder-status" class="settings-status muted" role="status" aria-live="polite"></p>
       </div>
     </div>
+    <dialog id="close-save-dialog" aria-labelledby="close-save-title" aria-describedby="close-save-message">
+      <h2 id="close-save-title">Save did not finish</h2>
+      <p id="close-save-message"></p>
+      <form method="dialog" class="close-save-actions">
+        <button value="keep-open" autofocus>Keep open</button>
+        <button value="retry" class="primary">Retry save</button>
+        <button value="discard">Close without saving</button>
+      </form>
+    </dialog>
   </body>
 </html>

@@ -614,7 +614,7 @@ describe("Store", () => {
     assert.equal(status.error.includes("secret backend details"), false);
   });
 
-  it("surfaces a Store save failure before native close destroys the window", async () => {
+  it("keeps the native window open after a Store save failure", async () => {
     const persist = {
       dataPath: "test-data/board.json",
       async load() {
@@ -645,16 +645,12 @@ describe("Store", () => {
         assert.equal(store.persistenceStatus.status, "error");
         assert.ok(store.persistenceStatus.error);
       },
-      2_000,
-      async () => {
-        events.push("paint");
-      },
     );
 
     assert.equal(registration.registered, true);
     await handler({ preventDefault: () => events.push("prevent") });
 
-    assert.deepEqual(events, ["prevent", "problem:failed", "paint", "destroy"]);
+    assert.deepEqual(events, ["prevent", "problem:failed"]);
   });
 });
 

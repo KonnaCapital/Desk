@@ -19,23 +19,10 @@ export type CloseWindow = {
 
 export type CloseRegistration = {
   registered: boolean;
+  requestClose(): Promise<void>;
 };
 
-export type PaintWaiter = () => Promise<void>;
-
-export function waitForPaint(): Promise<void> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(fallback);
-      resolve();
-    };
-    const fallback = setTimeout(finish, 16);
-    if (typeof requestAnimationFrame === "function") requestAnimationFrame(finish);
-  });
-}
+export type CloseDecision = "retry" | "discard" | "keep-open";
 
 export function flushWithTimeout(
   flush: CloseFlush,
@@ -66,43 +53,36 @@ export async function registerCloseHandler(
   flush: CloseFlush,
   onProblem: (
     result: Exclude<CloseFlushResult, "flushed">,
-  ) => void | Promise<void>,
+  ) => CloseDecision | void | Promise<CloseDecision | void>,
   timeoutMs = CLOSE_FLUSH_TIMEOUT_MS,
-  paint: PaintWaiter = waitForPaint,
 ): Promise<CloseRegistration> {
   let closing = false;
+  const requestClose = async () => {
+    if (closing) return;
+    closing = true;
+    try {
+      while (true) {
+        const result = await flushWithTimeout(flush, timeoutMs);
+        if (result === "flushed") break;
+        const decision = await onProblem(result);
+        if (decision === "retry") continue;
+        if (decision !== "discard") return;
+        break;
+      }
+      await current.destroy();
+    } catch {
+      // A failed prompt or native operation must leave the window available.
+    } finally {
+      closing = false;
+    }
+  };
   try {
-    await current.onCloseRequested(async (event) => {
-      if (closing) {
-        event.preventDefault();
-        return;
-      }
-      closing = true;
+    await current.onCloseRequested((event) => {
       event.preventDefault();
-      const result = await flushWithTimeout(flush, timeoutMs);
-      try {
-        if (result !== "flushed") {
-          try {
-            await onProblem(result);
-          } catch {
-            // Close must proceed if status rendering fails.
-          }
-          try {
-            await paint();
-          } catch {
-            // Close must proceed if the paint opportunity fails.
-          }
-        }
-      } finally {
-        try {
-          await current.destroy();
-        } catch {
-          closing = false;
-        }
-      }
+      return requestClose();
     });
-    return { registered: true };
+    return { registered: true, requestClose };
   } catch {
-    return { registered: false };
+    return { registered: false, requestClose };
   }
 }
