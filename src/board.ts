@@ -5,6 +5,7 @@ import {
   visibleCards,
 } from "./model.ts";
 import { t } from "./i18n.ts";
+import { createModalController } from "./modal.ts";
 import type { Store } from "./store.ts";
 
 const DRAG_THRESHOLD_PX = 5;
@@ -36,8 +37,12 @@ export function applyCardDrop(
   };
 }
 
-export function shouldHoldBoardPaint(editingId: string | null, dragId: string | null): boolean {
-  return editingId != null || dragId != null;
+export function shouldHoldBoardPaint(
+  editingId: string | null,
+  dragId: string | null,
+  pendingId: string | null = null,
+): boolean {
+  return editingId != null || dragId != null || pendingId != null;
 }
 
 export function overlayEscapeTarget(confirmHidden: boolean, archiveHidden: boolean): "confirm" | "archive" | null {
@@ -46,7 +51,7 @@ export function overlayEscapeTarget(confirmHidden: boolean, archiveHidden: boole
   return null;
 }
 
-function escapeHtml(text: string): string {
+export function escapeHtml(text: string): string {
   return text
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -67,6 +72,18 @@ export function mountBoard(store: Store): void {
   const confirmOverlay = document.querySelector<HTMLElement>("#archive-confirm-overlay")!;
   const confirmCancelBtn = document.querySelector<HTMLButtonElement>("#archive-confirm-cancel")!;
   const confirmOkBtn = document.querySelector<HTMLButtonElement>("#archive-confirm-ok")!;
+  const archiveModal = createModalController(
+    openArchiveBtn,
+    closeArchiveBtn,
+    (open) => overlay.classList.toggle("hidden", !open),
+    overlay.querySelector<HTMLElement>(".overlay-card")!,
+  );
+  const confirmModal = createModalController(
+    archiveDoneBtn,
+    confirmOkBtn,
+    (open) => confirmOverlay.classList.toggle("hidden", !open),
+    confirmOverlay.querySelector<HTMLElement>(".overlay-card")!,
+  );
 
   let pending:
     | {
@@ -83,6 +100,10 @@ export function mountBoard(store: Store): void {
   let dragOffsetX = 0;
   let dragOffsetY = 0;
   let editingId: string | null = null;
+  let deferredPaint = false;
+  let lastRenderedCards = store.state.cards;
+  let lastRenderedNarrowColumn = store.state.narrowColumn;
+  let lastRenderedSize = document.body.dataset.size;
 
   if (store.writesBlocked) {
     input.disabled = true;
@@ -98,6 +119,8 @@ export function mountBoard(store: Store): void {
 
   document.addEventListener("keydown", (event) => {
     if (event.key !== "/") return;
+    if (store.state.view !== "board") return;
+    if (document.querySelector(".overlay:not(.hidden)")) return;
     const target = event.target as HTMLElement | null;
     if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
     if (target?.isContentEditable) return;
@@ -106,38 +129,36 @@ export function mountBoard(store: Store): void {
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape") return;
-    if (editingId) return;
-    const which = overlayEscapeTarget(
-      confirmOverlay.classList.contains("hidden"),
-      overlay.classList.contains("hidden"),
-    );
-    if (!which) return;
-    event.preventDefault();
-    if (which === "confirm") confirmOverlay.classList.add("hidden");
-    else overlay.classList.add("hidden");
+    if (event.key === "Escape") {
+      if (editingId) return;
+      if (confirmModal.handleKeyDown(event)) return;
+      archiveModal.handleKeyDown(event);
+      return;
+    }
+    if (event.key !== "Tab") return;
+    if (confirmModal.handleKeyDown(event)) return;
+    archiveModal.handleKeyDown(event);
   });
 
   archiveDoneBtn.addEventListener("click", () => {
     if (visibleCards(store.state, "done").length === 0) return;
-    confirmOverlay.classList.remove("hidden");
-    confirmOkBtn.focus();
+    confirmModal.open();
   });
-  confirmCancelBtn.addEventListener("click", () => confirmOverlay.classList.add("hidden"));
+  confirmCancelBtn.addEventListener("click", () => confirmModal.close());
   confirmOkBtn.addEventListener("click", () => {
     store.archiveDone();
-    confirmOverlay.classList.add("hidden");
+    confirmModal.close();
   });
   confirmOverlay.addEventListener("click", (event) => {
-    if (event.target === confirmOverlay) confirmOverlay.classList.add("hidden");
+    if (event.target === confirmOverlay) confirmModal.close();
   });
   openArchiveBtn.addEventListener("click", () => {
-    overlay.classList.remove("hidden");
+    archiveModal.open();
     renderArchive();
   });
-  closeArchiveBtn.addEventListener("click", () => overlay.classList.add("hidden"));
+  closeArchiveBtn.addEventListener("click", () => archiveModal.close());
   overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) overlay.classList.add("hidden");
+    if (event.target === overlay) archiveModal.close();
   });
   archiveList.addEventListener("click", (event) => {
     const btn = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-restore-id]");
@@ -154,6 +175,14 @@ export function mountBoard(store: Store): void {
   boardEl.addEventListener("dblclick", (event) => {
     const cardEl = (event.target as HTMLElement).closest<HTMLElement>(".card");
     if (!cardEl || cardEl.isContentEditable) return;
+    beginEdit(cardEl);
+  });
+
+  boardEl.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== "F2") return;
+    const cardEl = (event.target as HTMLElement).closest<HTMLElement>(".card");
+    if (!cardEl || cardEl.isContentEditable) return;
+    event.preventDefault();
     beginEdit(cardEl);
   });
 
@@ -180,12 +209,14 @@ export function mountBoard(store: Store): void {
   });
 
   function beginEdit(cardEl: HTMLElement) {
+    if (!cardEl.isConnected) return;
     const id = cardEl.dataset.id;
     if (!id) return;
     const card = store.state.cards.find((item) => item.id === id);
     if (!card) return;
-    cancelPending();
+    if (editingId) return;
     editingId = id;
+    cancelPending();
     cardEl.contentEditable = "true";
     cardEl.dataset.originalText = card.text;
     cardEl.focus();
@@ -205,6 +236,7 @@ export function mountBoard(store: Store): void {
   function onEditKeyDown(event: KeyboardEvent) {
     if (event.key === "Enter") {
       event.preventDefault();
+      event.stopPropagation();
       (event.currentTarget as HTMLElement).blur();
     }
     if (event.key === "Escape") {
@@ -230,6 +262,7 @@ export function mountBoard(store: Store): void {
     } else {
       cardEl.textContent = original;
     }
+    requestPaint();
   }
 
   function distance(x: number, y: number): number {
@@ -271,10 +304,12 @@ export function mountBoard(store: Store): void {
   }
 
   function cancelPending() {
+    const hadPending = pending != null;
     pending = null;
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
     window.removeEventListener("pointercancel", onPointerCancel);
+    if (hadPending) requestPaint();
   }
 
   function finishDrag(x: number, y: number, cancel = false) {
@@ -282,7 +317,6 @@ export function mountBoard(store: Store): void {
     const id = dragId;
     const hit = cancel ? null : hitAt(x, y);
     const action = applyCardDrop(findCardColumn(id), hit);
-    dragId = null;
     pending = null;
     ghost?.remove();
     ghost = null;
@@ -293,7 +327,8 @@ export function mountBoard(store: Store): void {
     paintDropTarget(null);
     if (action.moveTo) store.moveCard(id, action.moveTo);
     if (action.followNarrow && hit) store.setNarrowColumn(hit.column);
-    render();
+    dragId = null;
+    requestPaint(true);
   }
 
   function findCardColumn(id: string): string | undefined {
@@ -315,7 +350,7 @@ export function mountBoard(store: Store): void {
     }
   }
 
-  function renderArchive() {
+  function renderArchive(focusRestoreId: string | null = null) {
     const items = store.state.cards
       .filter((card) => card.archivedAt != null)
       .sort((a, b) => (b.archivedAt ?? 0) - (a.archivedAt ?? 0));
@@ -325,13 +360,40 @@ export function mountBoard(store: Store): void {
         : items
             .map(
               (card) =>
-                `<li class="archive-item"><span>${escapeHtml(card.text)}</span><button type="button" data-restore-id="${card.id}">${t("restore")}</button></li>`,
+                `<li class="archive-item"><span>${escapeHtml(card.text)}</span><button type="button" data-restore-id="${escapeHtml(card.id)}">${t("restore")}</button></li>`,
             )
             .join("");
+    if (focusRestoreId) {
+      const restoreButton = Array.from(
+        archiveList.querySelectorAll<HTMLButtonElement>("[data-restore-id]"),
+      ).find((button) => button.dataset.restoreId === focusRestoreId);
+      (restoreButton ?? closeArchiveBtn).focus({ preventScroll: true });
+    }
   }
 
   function render() {
-    if (shouldHoldBoardPaint(editingId, dragId)) return;
+    const activeElement = document.activeElement;
+    const focusedCardId =
+      activeElement instanceof HTMLElement && boardEl.contains(activeElement)
+        ? activeElement.closest<HTMLElement>(".card")?.dataset.id ?? null
+        : null;
+    const focusedSwitchColumn =
+      activeElement instanceof HTMLElement && switchEl.contains(activeElement)
+        ? activeElement.closest<HTMLElement>("[data-column]")?.dataset.column ?? null
+        : null;
+    const focusedRestoreId =
+      activeElement instanceof HTMLElement && archiveList.contains(activeElement)
+        ? activeElement.closest<HTMLButtonElement>("[data-restore-id]")?.dataset.restoreId ?? null
+        : null;
+    const scrollPositions = new Map<string, { left: number; top: number }>();
+    for (const col of boardEl.querySelectorAll<HTMLElement>(".col[data-column]")) {
+      const column = col.dataset.column;
+      const body = col.querySelector<HTMLElement>(".col-body");
+      if (column && body) {
+        scrollPositions.set(column, { left: body.scrollLeft, top: body.scrollTop });
+      }
+    }
+
     const size = document.body.dataset.size as SizeClass | undefined;
     const narrow = size === "sm" || size === "xs";
     switchEl.innerHTML = COLUMNS.map(
@@ -348,7 +410,7 @@ export function mountBoard(store: Store): void {
           : cards
               .map(
                 (card) =>
-                  `<article class="card" data-id="${card.id}" tabindex="0">${escapeHtml(card.text)}</article>`,
+                  `<article class="card" data-id="${escapeHtml(card.id)}" tabindex="0">${escapeHtml(card.text)}</article>`,
               )
               .join("");
       return `<section class="col${active ? " active" : ""}" data-column="${col.id}">
@@ -357,10 +419,49 @@ export function mountBoard(store: Store): void {
       </section>`;
     }).join("");
 
-    if (!overlay.classList.contains("hidden")) renderArchive();
+    for (const col of boardEl.querySelectorAll<HTMLElement>(".col[data-column]")) {
+      const body = col.querySelector<HTMLElement>(".col-body");
+      const position = col.dataset.column ? scrollPositions.get(col.dataset.column) : undefined;
+      if (body && position) {
+        body.scrollLeft = position.left;
+        body.scrollTop = position.top;
+      }
+    }
+
+    if (!overlay.classList.contains("hidden")) renderArchive(focusedRestoreId);
+    if (focusedCardId) {
+      const focusedCard = Array.from(boardEl.querySelectorAll<HTMLElement>(".card")).find(
+        (card) => card.dataset.id === focusedCardId && card.getClientRects().length > 0,
+      );
+      focusedCard?.focus({ preventScroll: true });
+    } else if (focusedSwitchColumn) {
+      const focusedSwitch = Array.from(
+        switchEl.querySelectorAll<HTMLElement>("[data-column]"),
+      ).find((button) => button.dataset.column === focusedSwitchColumn);
+      focusedSwitch?.focus({ preventScroll: true });
+    }
+    lastRenderedCards = store.state.cards;
+    lastRenderedNarrowColumn = store.state.narrowColumn;
+    lastRenderedSize = document.body.dataset.size;
+    deferredPaint = false;
   }
 
-  store.subscribe(render);
-  window.addEventListener("desk:resize", render);
-  render();
+  function requestPaint(force = false) {
+    const changed =
+      force ||
+      deferredPaint ||
+      store.state.cards !== lastRenderedCards ||
+      store.state.narrowColumn !== lastRenderedNarrowColumn ||
+      document.body.dataset.size !== lastRenderedSize;
+    if (!changed) return;
+    if (shouldHoldBoardPaint(editingId, dragId, pending?.id ?? null)) {
+      deferredPaint = true;
+      return;
+    }
+    render();
+  }
+
+  store.subscribe(requestPaint);
+  window.addEventListener("desk:resize", () => requestPaint());
+  requestPaint(true);
 }
