@@ -11,6 +11,7 @@ const EN = {
   restore: "Restore",
   start: "Start",
   pause: "Pause",
+  pinChangeError: "Could not change the window pin. Try again.",
   durationTooShort: "Minimum is 1 minute.",
   timerDone: "Timer at zero",
   showDataFolderError: "Could not open the data folder.",
