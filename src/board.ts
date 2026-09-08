@@ -223,6 +223,11 @@ export function mountBoard(store: Store): void {
 
   window.addEventListener("blur", cancelActivePointer);
 
+  window.addEventListener("desk:before-close", () => {
+    const editor = boardEl.querySelector<HTMLElement>('.card[contenteditable="true"]');
+    if (editor) finishEdit(editor, true);
+  });
+
   function beginEdit(cardEl: HTMLElement) {
     if (!cardEl.isConnected) return;
     const id = cardEl.dataset.id;

@@ -4,7 +4,7 @@ import {
   loadAutostartApi,
   type AutostartError,
 } from "./autostart.ts";
-import { registerCloseHandler, type CloseFlushResult } from "./close.ts";
+import { registerCloseHandler, type CloseDecision, type CloseFlushResult } from "./close.ts";
 import { t } from "./i18n.ts";
 import {
   applyCornerSnapIfNeeded,
@@ -29,6 +29,9 @@ export async function mountChrome(store: Store): Promise<void> {
   const settingsBtn = document.querySelector<HTMLButtonElement>("#settings-btn")!;
   const minBtn = document.querySelector<HTMLButtonElement>("#min-btn")!;
   const closeBtn = document.querySelector<HTMLButtonElement>("#close-btn")!;
+  const closeDialog = document.querySelector<HTMLDialogElement>("#close-save-dialog")!;
+  const closeMessage = document.querySelector<HTMLElement>("#close-save-message")!;
+  closeDialog.addEventListener("keydown", (event) => event.stopPropagation());
   const persistenceStatus = document.querySelector<HTMLElement>("#persistence-status")!;
   const settingsOverlay = document.querySelector<HTMLElement>("#settings-overlay")!;
   const closeSettingsBtn = document.querySelector<HTMLButtonElement>("#close-settings")!;
@@ -41,6 +44,8 @@ export async function mountChrome(store: Store): Promise<void> {
   const chrome = document.querySelector<HTMLElement>(".chrome")!;
 
   let closeProtectionMessage: string | null = null;
+  let closeProblemShown = false;
+  let requestClose: (() => Promise<void>) | null = null;
   let lastPersistStatus: PersistenceState["status"] | null = null;
   let persistHideTimer: number | null = null;
   let liveDrag = false;
@@ -53,15 +58,31 @@ export async function mountChrome(store: Store): Promise<void> {
   if (nativeWindow) {
     const registration = await registerCloseHandler(
       nativeWindow,
-      () => store.flush(),
+      () => {
+        // Commit an editor even when the native webview does not deliver blur.
+        window.dispatchEvent(new Event("desk:before-close"));
+        // A blocked load has accepted no edits and must remain closable.
+        return store.writesBlocked ? Promise.resolve("saved" as const) : store.flush();
+      },
       (result: Exclude<CloseFlushResult, "flushed">) => {
+        closeProblemShown = true;
         closeProtectionMessage =
           result === "timed-out"
             ? t("persistenceCloseTimeout")
             : `${t("persistenceCloseError")} ${store.persistenceStatus.dataPath}`;
         applyPersistenceStatus(store.persistenceStatus);
+        closeMessage.textContent = closeProtectionMessage;
+        return new Promise<CloseDecision>((resolve) => {
+          closeDialog.returnValue = "keep-open";
+          closeDialog.addEventListener("close", () => {
+            const choice = closeDialog.returnValue;
+            resolve(choice === "retry" || choice === "discard" ? choice : "keep-open");
+          }, { once: true });
+          closeDialog.showModal();
+        });
       },
     );
+    requestClose = registration.requestClose;
     if (!registration.registered) {
       closeProtectionMessage = t("persistenceCloseRegistrationError");
     }
@@ -190,7 +211,7 @@ export async function mountChrome(store: Store): Promise<void> {
     await nativeWindow?.minimize();
   });
   closeBtn.addEventListener("click", async () => {
-    await nativeWindow?.close();
+    await requestClose?.();
   });
 
   function applyView(view: View) {
@@ -283,6 +304,11 @@ export async function mountChrome(store: Store): Promise<void> {
   }
 
   function applyPersistenceStatus(state: PersistenceState) {
+    if (closeProblemShown && (state.status === "saved" || state.status === "recovered")) {
+      closeProtectionMessage = null;
+      closeProblemShown = false;
+      if (closeDialog.open) closeMessage.textContent = t("persistenceCloseSaved");
+    }
     const allowSavedFlash = lastPersistStatus === "saving" && state.status === "saved";
     lastPersistStatus = state.status;
     const copy = persistChromeCopy(

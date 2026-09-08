@@ -523,6 +523,36 @@ body[data-timer="running"] .clock-actions {
   font-weight: 600;
 }
 
+#close-save-dialog {
+  width: min(420px, calc(100% - 16px));
+  max-height: calc(100% - 12px);
+  overflow: auto;
+  padding: 12px;
+  color: var(--text);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+#close-save-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+#close-save-dialog h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+#close-save-message {
+  overflow-wrap: anywhere;
+}
+
+.close-save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .settings-card {
   width: min(360px, calc(100% - 24px));
 }
