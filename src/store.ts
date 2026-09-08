@@ -19,6 +19,10 @@ import {
   setView as setViewModel,
   startTimer as startTimerModel,
 } from "./model.ts";
+import {
+  createAtomicStorage,
+  type AtomicStorageBackend,
+} from "./storage.ts";
 
 export type PersistSnapshot = {
   primary: string | null;
@@ -419,35 +423,27 @@ export async function resolveTauriDataPath(): Promise<string> {
 export async function createTauriPersist(
   resolveDataPath: TauriDataPathResolver = resolveTauriDataPath,
 ): Promise<Persist> {
-  const { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } =
-    await import("@tauri-apps/plugin-fs");
-  const file = "board.json";
-  const backupFile = "board.backup.json";
-  const opts = { baseDir: BaseDirectory.AppLocalData };
+  const {
+    BaseDirectory,
+    exists,
+    mkdir,
+    readTextFile,
+    rename,
+    writeTextFile,
+  } = await import("@tauri-apps/plugin-fs");
+  const baseDir = BaseDirectory.AppLocalData;
+  const opts = { baseDir };
   const dataPath = await resolveDataPath();
-  let previousPrimary: string | null = null;
-
-  async function readOptional(path: string): Promise<string | null> {
-    if (!(await exists(path, opts))) return null;
-    return readTextFile(path, opts);
-  }
-
-  return {
-    dataPath,
-    async load() {
-      const primary = await readOptional(file);
-      const backup = await readOptional(backupFile);
-      previousPrimary =
-        primary !== null && isValidStateJson(primary) ? primary : null;
-      return { primary, backup, dataPath };
-    },
-    async save(json: string) {
-      await mkdir(".", { ...opts, recursive: true });
-      if (previousPrimary !== null) {
-        await writeTextFile(backupFile, previousPrimary, opts);
-      }
-      await writeTextFile(file, json, opts);
-      previousPrimary = json;
-    },
+  const backend: AtomicStorageBackend = {
+    ensureDirectory: () => mkdir(".", { ...opts, recursive: true }),
+    exists: (path) => exists(path, opts),
+    readTextFile: (path) => readTextFile(path, opts),
+    writeTextFile: (path, data) => writeTextFile(path, data, opts),
+    rename: (oldPath, newPath) =>
+      rename(oldPath, newPath, {
+        oldPathBaseDir: baseDir,
+        newPathBaseDir: baseDir,
+      }),
   };
+  return createAtomicStorage(backend, dataPath, isValidStateJson);
 }
