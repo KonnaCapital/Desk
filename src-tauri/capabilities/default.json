@@ -41,7 +41,16 @@
     {
       "identifier": "fs:allow-write-text-file",
       "allow": [
+        { "path": "$APPLOCALDATA/board.json.tmp" },
+        { "path": "$APPLOCALDATA/board.backup.json.tmp" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-rename",
+      "allow": [
+        { "path": "$APPLOCALDATA/board.json.tmp" },
         { "path": "$APPLOCALDATA/board.json" },
+        { "path": "$APPLOCALDATA/board.backup.json.tmp" },
         { "path": "$APPLOCALDATA/board.backup.json" }
       ]
     },
