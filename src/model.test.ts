@@ -253,6 +253,86 @@ describe("Store", () => {
     assert.equal("autostartEnabled" in store.state, false);
   });
 
+  it("accepts legacy states that omitted optional chrome fields", () => {
+    const legacy = {
+      ...emptyState(),
+      autostartEnabled: true,
+    } as Record<string, unknown>;
+    delete legacy.view;
+    delete legacy.pinned;
+    delete legacy.narrowColumn;
+
+    assert.equal(isStateEnvelope(legacy), true);
+    const parsed = parseState(legacy);
+    assert.equal(parsed.view, "board");
+    assert.equal(parsed.pinned, false);
+    assert.equal(parsed.narrowColumn, "inbox");
+    assert.equal("autostartEnabled" in parsed, false);
+  });
+
+  it("rejects empty or duplicate card IDs and malformed card records", () => {
+    const card = {
+      id: "card-1",
+      text: "A task",
+      column: "inbox",
+      createdAt: 1,
+      updatedAt: 1,
+      archivedAt: null,
+    };
+
+    assert.equal(
+      isStateEnvelope({ ...emptyState(), cards: [{ ...card, id: "" }] }),
+      false,
+    );
+    assert.equal(
+      isStateEnvelope({ ...emptyState(), cards: [{ ...card, id: "   " }] }),
+      false,
+    );
+    assert.equal(
+      isStateEnvelope({
+        ...emptyState(),
+        cards: [card, { ...card, text: "Another task" }],
+      }),
+      false,
+    );
+    assert.equal(
+      isStateEnvelope({
+        ...emptyState(),
+        cards: [{ ...card, column: "invalid" }],
+      }),
+      false,
+    );
+    assert.equal(
+      isStateEnvelope({
+        ...emptyState(),
+        cards: [{ ...card, createdAt: Number.POSITIVE_INFINITY }],
+      }),
+      false,
+    );
+  });
+
+  it("rejects non-finite and wrongly typed timer fields", () => {
+    const fromPersistedJson = JSON.parse(
+      '{"version":1,"view":"board","pinned":false,"narrowColumn":"inbox","cards":[],"timer":{"durationMs":1e400,"endsAt":1e400,"running":"false","remainingMs":1e400}}',
+    );
+
+    assert.equal(isStateEnvelope(fromPersistedJson), false);
+    assert.equal(
+      isStateEnvelope({
+        ...emptyState(),
+        timer: { ...emptyState().timer, running: "false" },
+      }),
+      false,
+    );
+    assert.equal(
+      isStateEnvelope({
+        ...emptyState(),
+        timer: { ...emptyState().timer, remainingMs: -1 },
+      }),
+      false,
+    );
+  });
+
   it("serializes overlapping flushes and leaves the latest state last", async () => {
     let releaseFirst!: () => void;
     const firstSave = new Promise<void>((resolve) => {
@@ -308,6 +388,72 @@ describe("Store", () => {
 
     assert.equal(store.state.pinned, false);
     assert.equal(persistenceOf(store).status, "recovered");
+  });
+
+  it("recovers instead of dropping a malformed card in primary JSON", async () => {
+    const backupState = JSON.stringify({
+      ...emptyState(),
+      cards: [{
+        id: "safe-card",
+        text: "Keep this task",
+        column: "inbox",
+        createdAt: 1,
+        updatedAt: 1,
+        archivedAt: null,
+      }],
+    });
+    const malformedPrimary = JSON.stringify({
+      ...emptyState(),
+      cards: [{
+        id: "lost-card",
+        text: "Do not silently drop this",
+        column: "invalid",
+        createdAt: 1,
+        updatedAt: 1,
+        archivedAt: null,
+      }],
+    });
+    const store = await Store.load(snapshotPersist(malformedPrimary, backupState));
+
+    assert.equal(persistenceOf(store).status, "recovered");
+    assert.equal(store.state.cards.length, 1);
+    assert.equal(store.state.cards[0].text, "Keep this task");
+  });
+
+  it("recovers instead of accepting malformed timer JSON", async () => {
+    const backupState = JSON.stringify({ ...emptyState(), pinned: true });
+    const malformedPrimary =
+      '{"version":1,"view":"board","pinned":false,"narrowColumn":"inbox","cards":[],"timer":{"durationMs":1e400,"endsAt":1e400,"running":"false","remainingMs":1e400}}';
+    const store = await Store.load(snapshotPersist(malformedPrimary, backupState));
+
+    assert.equal(persistenceOf(store).status, "recovered");
+    assert.equal(store.state.pinned, true);
+    assert.equal(store.state.timer.running, false);
+  });
+
+  it("retries a failed primary rewrite after backup recovery", async () => {
+    const backupState = JSON.stringify({ ...emptyState(), pinned: false });
+    let currentPrimary = "{ malformed";
+    let writes = 0;
+    const persist = {
+      dataPath: "test-data/board.json",
+      async load() {
+        return { primary: currentPrimary, backup: backupState };
+      },
+      async save(json: string) {
+        writes += 1;
+        if (writes === 1) throw new Error("transient disk failure");
+        currentPrimary = json;
+      },
+    } as Persist;
+    const store = await Store.load(persist);
+
+    assert.equal(writes, 1);
+    assert.equal(persistenceOf(store).status, "error");
+    assert.equal(await store.flush(), "saved");
+    assert.equal(writes, 2);
+    assert.equal(persistenceOf(store).status, "saved");
+    assert.equal(currentPrimary, JSON.stringify(store.state, null, 2));
   });
 
   it("recovers from a null primary using valid backup JSON", async () => {

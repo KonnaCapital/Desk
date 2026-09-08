@@ -262,6 +262,7 @@ export class Store {
       await this.persist.save(json);
       this.lastSavedRevision = this.revision;
     } catch {
+      this.lastQueuedRevision = this.lastSavedRevision;
       this.setPersistence("error", saveError(this.persistence.dataPath));
     }
   }

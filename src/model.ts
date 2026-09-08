@@ -75,16 +75,73 @@ function isView(value: unknown): value is View {
   return value === "board" || value === "clock";
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function hasOwn(value: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function isCardRecord(value: unknown, ids: Set<string>): value is Card {
+  if (!isRecord(value)) return false;
+  const id = value.id;
+  if (
+    typeof id !== "string" ||
+    id.trim().length === 0 ||
+    ids.has(id) ||
+    typeof value.text !== "string" ||
+    value.text.trim().length === 0 ||
+    !isColumn(value.column) ||
+    !isFiniteNumber(value.createdAt) ||
+    !isFiniteNumber(value.updatedAt) ||
+    (value.archivedAt !== null && !isFiniteNumber(value.archivedAt))
+  ) {
+    return false;
+  }
+  ids.add(id);
+  return true;
+}
+
+function isTimerRecord(value: unknown): value is TimerState {
+  if (!isRecord(value)) return false;
+  if (
+    !hasOwn(value, "durationMs") ||
+    !hasOwn(value, "endsAt") ||
+    !hasOwn(value, "running") ||
+    !hasOwn(value, "remainingMs")
+  ) {
+    return false;
+  }
+  if (
+    !isFiniteNumber(value.durationMs) ||
+    value.durationMs <= 0 ||
+    (value.endsAt !== null && !isFiniteNumber(value.endsAt)) ||
+    typeof value.running !== "boolean" ||
+    !isFiniteNumber(value.remainingMs) ||
+    value.remainingMs < 0
+  ) {
+    return false;
+  }
+  return value.running ? value.endsAt !== null : value.endsAt === null;
+}
+
 export function isStateEnvelope(raw: unknown): boolean {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
-  const data = raw as Record<string, unknown>;
-  const timer = data.timer;
+  if (!isRecord(raw)) return false;
+  const data = raw;
+  const ids = new Set<string>();
   return (
     data.version === 1 &&
     Array.isArray(data.cards) &&
-    timer !== null &&
-    typeof timer === "object" &&
-    !Array.isArray(timer)
+    data.cards.every((card) => isCardRecord(card, ids)) &&
+    isTimerRecord(data.timer) &&
+    (data.view === undefined || isView(data.view)) &&
+    (data.pinned === undefined || typeof data.pinned === "boolean") &&
+    (data.narrowColumn === undefined || isColumn(data.narrowColumn))
   );
 }
 
@@ -108,14 +165,16 @@ export function parseState(raw: unknown): BoardState {
       id: c.id,
       text: c.text,
       column: c.column,
-      createdAt: typeof c.createdAt === "number" ? c.createdAt : Date.now(),
-      updatedAt: typeof c.updatedAt === "number" ? c.updatedAt : Date.now(),
-      archivedAt: typeof c.archivedAt === "number" ? c.archivedAt : null,
+      createdAt:
+        isFiniteNumber(c.createdAt) ? c.createdAt : Date.now(),
+      updatedAt:
+        isFiniteNumber(c.updatedAt) ? c.updatedAt : Date.now(),
+      archivedAt: isFiniteNumber(c.archivedAt) ? c.archivedAt : null,
     });
   }
 
   const durationMs =
-    typeof timerIn.durationMs === "number" && timerIn.durationMs > 0
+    isFiniteNumber(timerIn.durationMs) && timerIn.durationMs > 0
       ? timerIn.durationMs
       : base.timer.durationMs;
 
@@ -127,10 +186,10 @@ export function parseState(raw: unknown): BoardState {
     cards,
     timer: {
       durationMs,
-      endsAt: typeof timerIn.endsAt === "number" ? timerIn.endsAt : null,
-      running: Boolean(timerIn.running),
+      endsAt: isFiniteNumber(timerIn.endsAt) ? timerIn.endsAt : null,
+      running: typeof timerIn.running === "boolean" ? timerIn.running : false,
       remainingMs:
-        typeof timerIn.remainingMs === "number"
+        isFiniteNumber(timerIn.remainingMs)
           ? Math.max(0, timerIn.remainingMs)
           : durationMs,
     },
