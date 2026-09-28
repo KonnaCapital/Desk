@@ -470,11 +470,18 @@ body[data-clock-digits="stack"] .clock-sep {
   position: absolute;
   left: 16px;
   right: 16px;
-  bottom: 14px;
-  height: 8px;
+  bottom: 12px;
+  height: 3px;
   border-radius: 99px;
-  background: #2a2a2a;
+  background: rgba(255, 255, 255, 0.06);
   overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+body[data-timer="running"] .clock-progress,
+body[data-timer="paused"] .clock-progress {
+  opacity: 1;
 }
 
 #clock-progress-fill {
@@ -484,6 +491,11 @@ body[data-clock-digits="stack"] .clock-sep {
   transform: scaleX(1);
   background: var(--accent);
   border-radius: 99px;
+}
+
+/* Paints land on second boundaries; a one-second glide makes the drain continuous. */
+body[data-timer="running"] #clock-progress-fill {
+  transition: transform 1s linear;
 }
 
 body[data-timer="running"] .clock-presets,
@@ -732,6 +744,15 @@ body[data-view="clock"][data-size="xs"] .clock-digits {
   body:not([data-size="xs"])[data-timer="idle"] .clock-digits,
   body:not([data-size="xs"])[data-timer="done"] .clock-digits {
     --digit-height: calc(100cqh - 144px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clock-digits,
+  .clock-progress,
+  #clock-progress-fill {
+    animation: none !important;
+    transition: none !important;
   }
 }
 
