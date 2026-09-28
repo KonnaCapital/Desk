@@ -426,6 +426,16 @@ export function isFinished(timer: TimerState, now = Date.now()): boolean {
   return timer.running && remainingMs(timer, now) <= 0;
 }
 
+export type TimerPhase = "idle" | "running" | "paused" | "done";
+
+/** Paused means stopped part-way; a full or empty clock is idle or done. */
+export function timerPhase(timer: TimerState, now = Date.now()): TimerPhase {
+  if (timer.running) return "running";
+  const rem = remainingMs(timer, now);
+  if (rem === 0) return "done";
+  return rem < timer.durationMs ? "paused" : "idle";
+}
+
 export function sizeClass(width: number, height: number): SizeClass {
   if (width < 280 || height < 200) return "xs";
   if (width < 520) return "sm";

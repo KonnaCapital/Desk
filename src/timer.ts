@@ -1,4 +1,11 @@
-import { PRESETS, clockParts, formatTime, hoursToDurationMs, remainingMs } from "./model.ts";
+import {
+  PRESETS,
+  clockParts,
+  formatTime,
+  hoursToDurationMs,
+  remainingMs,
+  timerPhase,
+} from "./model.ts";
 import { t } from "./i18n.ts";
 import type { Store } from "./store.ts";
 
@@ -64,9 +71,7 @@ export function mountTimer(store: Store, onComplete: () => void): void {
     digits.setAttribute("aria-label", `${timer.running ? t("pause") : t("start")}: ${formatTime(rem)}`);
     minsEl.textContent = parts.minutes;
     secsEl.textContent = parts.seconds;
-    digits.classList.toggle("running", timer.running);
-    digits.classList.toggle("done", rem === 0 && !timer.running);
-    document.body.dataset.timer = timer.running ? "running" : rem === 0 ? "done" : "idle";
+    document.body.dataset.timer = timerPhase(timer, now);
     const ratio = timer.durationMs > 0 ? rem / timer.durationMs : 0;
     progressFill.style.transform = `scaleX(${Math.max(0, Math.min(1, ratio))})`;
     toggle.textContent = timer.running ? t("pause") : t("start");
