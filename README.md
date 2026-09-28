@@ -20,7 +20,9 @@ The same page: [konnacapital.github.io/Desk](https://konnacapital.github.io/Desk
 
 ## Use it
 
-Capture into Inbox. Move cards to Today, To Do, Done. The clock is 25 minutes, an hour, two hours, or your own time. Shrink it to the edge, then pin it so it stays put and on top.
+Capture into Inbox. Move cards to Today, To Do, Done. The clock is 25 minutes, an hour, two hours, or your own time. Scroll over the time to change it. Shrink it to the edge, then pin it so it stays put and on top.
+
+Pick the card the time is for under the clock. At zero, Mark done moves it to Done. On the clock, Space starts and pauses and R resets.
 
 ![Desk at a narrow size](docs/images/board-narrow.png)
 
