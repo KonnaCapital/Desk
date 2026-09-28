@@ -32,4 +32,4 @@ cargo check --locked --manifest-path src-tauri/Cargo.toml
 
 `npm run test:ui` needs Chromium for Playwright once: `npx playwright install chromium`. It saves screenshots of the clock and board in `shots/`.
 
-Every pull request builds a Desk Dev test installer. Find it in the pull request's checks, under *Preview build*.
+Every pull request builds Desk Dev for Windows and macOS to try. Find both in the pull request's checks, under *Preview build*.

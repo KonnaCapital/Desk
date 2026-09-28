@@ -96,7 +96,7 @@ CI runs every check on every pull request and before each release. It builds and
 
 ## Trying a change
 
-Every pull request, and every push to main, builds an unsigned **Desk Dev** installer in the *Preview build* workflow. Open the run and use the link in its summary. Desk Dev installs next to Desk with its own data, so it never touches your real board.
+Every pull request, and every push to main, builds **Desk Dev** in the *Preview build* workflow. You get an unsigned Windows installer and an ad-hoc signed macOS disk image that runs on Apple silicon and Intel. Open the run and use the links in its summary. Desk Dev installs next to Desk with its own data, so it never touches your real board. On a Mac, allow the first launch in System Settings → Privacy & Security.
 
 ## Rules of thumb
 

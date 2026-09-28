@@ -1,9 +1,10 @@
 name: Preview build
 
-# A test installer for every pull request, and for main. It installs "Desk Dev",
-# which has its own identifier, binary name and data folder, so trying a change
-# never touches the real Desk or its board. Builds on main also warm the Rust
-# cache that pull requests start from.
+# Test builds for every pull request, and for main: a Windows installer and a
+# macOS disk image. They install "Desk Dev", which has its own identifier,
+# binary name and data folder, so trying a change never touches the real Desk
+# or its board. Builds on main also warm the Rust cache that pull requests
+# start from.
 on:
   pull_request:
     paths-ignore:
@@ -67,11 +68,67 @@ jobs:
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
         run: |
           {
-            echo "## Try this change"
+            echo "## Try this change on Windows"
             echo
             echo "[Download the Desk Dev installer]($ARTIFACT_URL) (a zip; sign in to GitHub first)."
             echo
             echo "Desk Dev installs next to Desk with its own data, so your real board is untouched."
             echo "Windows may warn that the installer is unsigned. Choose **More info**, then **Run anyway**."
             echo "Remove it from Windows Settings when you are done."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  macos:
+    name: Desk Dev disk image (macOS universal)
+    runs-on: macos-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Rust for Apple silicon and Intel
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # "-" signs ad hoc: no Apple account, and the app still runs on Apple silicon.
+      - name: Build the ad-hoc signed Desk Dev disk image
+        env:
+          APPLE_SIGNING_IDENTITY: "-"
+        run: npm run tauri build -- --config src-tauri/tauri.dev.conf.json --target universal-apple-darwin --bundles dmg
+
+      - name: Upload the disk image
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Desk-Dev-macOS-Universal
+          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Explain how to try it
+        shell: bash
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        run: |
+          {
+            echo "## Try this change on a Mac"
+            echo
+            echo "[Download the Desk Dev disk image]($ARTIFACT_URL) (a zip; sign in to GitHub first). It runs on Apple silicon and Intel Macs."
+            echo
+            echo "Open the disk image and drag Desk Dev to Applications. It keeps its own data, so your real board is untouched."
+            echo "The app is not notarized, so macOS blocks the first launch. Open **System Settings → Privacy & Security**, find Desk Dev near the bottom, and choose **Open Anyway**."
+            echo "Or run \`xattr -dr com.apple.quarantine \"/Applications/Desk Dev.app\"\` in Terminal once."
           } >> "$GITHUB_STEP_SUMMARY"
