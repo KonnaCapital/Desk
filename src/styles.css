@@ -34,7 +34,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font-family: inherit;
   color: inherit;
 }
@@ -311,6 +312,10 @@ button,
   border-color: #3a3a3a;
 }
 
+.card.is-current {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
 .card:focus-visible {
   outline: 1px solid var(--accent);
   outline-offset: 1px;
@@ -431,6 +436,78 @@ body[data-clock-digits="stack"][data-clock-hours="true"] .clock-face {
   flex-direction: column;
   align-items: center;
   gap: 18px;
+}
+
+/* The card this time is for: a quiet line under the digits, kept while running. */
+.clock-focus {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  -webkit-app-region: no-drag;
+}
+
+.clock-focus-pick {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  max-width: min(100%, 440px);
+}
+
+.clock-focus-pick::after {
+  content: "▾";
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  transform: translateY(-50%);
+  color: var(--faint);
+  font-size: 10px;
+  pointer-events: none;
+}
+
+#focus-select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px 24px 3px 12px;
+  border: 1px solid transparent;
+  border-radius: 99px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  text-align-last: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+#focus-select:hover,
+#focus-select:focus-visible {
+  border-color: var(--border);
+  background: var(--bg-raised);
+  outline: none;
+}
+
+body[data-current-card="true"] #focus-select {
+  color: var(--text);
+}
+
+#focus-select:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+#focus-done {
+  padding: 7px 16px;
+  border-radius: 99px;
+}
+
+/* Mark done belongs to the moment the clock reaches zero. */
+body:not([data-timer="done"]) #focus-done {
+  display: none;
 }
 
 .clock-digits {
@@ -831,6 +908,8 @@ body[data-size="xs"] .col:not(.active) {
 }
 
 body[data-size="xs"] .app-name,
+body[data-size="xs"] .clock-focus,
+body[data-size="xs"] #focus-done,
 body[data-size="xs"] .clock-presets,
 body[data-size="xs"] .custom-duration,
 body[data-size="xs"] .board-footer,
@@ -891,6 +970,11 @@ body[data-size="xs"] .clock-actions .primary {
     padding-top: 6px;
     padding-bottom: 20px;
   }
+
+  /* No room beside the controls; it comes back while the clock runs. */
+  body:not([data-timer="running"]) .clock-focus {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -944,7 +1028,8 @@ body[data-clock-solo="true"] .clock-view {
   cursor: default;
 }
 
-body[data-clock-solo="true"] .clock-controls {
+body[data-clock-solo="true"] .clock-controls,
+body[data-clock-solo="true"][data-current-card="false"] .clock-focus {
   display: none;
 }
 

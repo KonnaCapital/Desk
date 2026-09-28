@@ -3,6 +3,8 @@ import { mountBoard } from "./board.ts";
 import { mountChrome } from "./chrome.ts";
 import { mountTimer } from "./timer.ts";
 import { mountClockKeys } from "./clock-keys.ts";
+import { mountFocus } from "./focus.ts";
+import { currentCard, type Card } from "./model.ts";
 import { initI18n, t } from "./i18n.ts";
 
 function isTauri(): boolean {
@@ -37,7 +39,7 @@ async function loadAppName(): Promise<string> {
   }
 }
 
-async function notifyDone(appName: string) {
+async function notifyDone(appName: string, card: Card | null) {
   beep();
   try {
     const notification = await import("@tauri-apps/plugin-notification");
@@ -48,7 +50,7 @@ async function notifyDone(appName: string) {
     }
     await notification.sendNotification({
       title: appName,
-      body: t("timerDone"),
+      body: card ? `${t("timerDone")} · ${card.text}` : t("timerDone"),
     });
   } catch {
     // Browser preview: sound is enough.
@@ -84,10 +86,11 @@ async function boot() {
   await mountChrome(store, appName);
   mountBoard(store);
   mountTimer(store, {
-    onComplete: () => void notifyDone(appName),
+    onComplete: () => void notifyDone(appName, currentCard(store.state)),
     onTitle: createTitleSync(),
     appName,
   });
+  mountFocus(store);
   mountClockKeys(store);
 
   const flush = () => {

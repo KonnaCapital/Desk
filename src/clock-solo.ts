@@ -5,7 +5,11 @@ export type ClockSoloTarget = "digits" | "face" | "control";
 export function clockSoloTarget(el: EventTarget | null): ClockSoloTarget {
   const node = el as { closest?: (selector: string) => unknown } | null;
   if (!node || typeof node.closest !== "function") return "face";
-  if (node.closest(".clock-presets, .custom-duration, .clock-actions, input, #clock-duration-status")) {
+  if (
+    node.closest(
+      ".clock-presets, .custom-duration, .clock-actions, .clock-focus, input, select, #clock-duration-status",
+    )
+  ) {
     return "control";
   }
   if (node.closest("#clock-digits")) return "digits";

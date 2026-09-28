@@ -25,6 +25,8 @@ export type BoardState = {
   narrowColumn: Column;
   cards: Card[];
   timer: TimerState;
+  /** The card the clock is for: open, and not in Done. */
+  currentCardId: string | null;
 };
 
 export const COLUMNS: { id: Column; label: string }[] = [
@@ -57,6 +59,7 @@ export function emptyState(): BoardState {
       running: false,
       remainingMs: durationMs,
     },
+    currentCardId: null,
   };
 }
 
@@ -141,7 +144,10 @@ export function isStateEnvelope(raw: unknown): boolean {
     isTimerRecord(data.timer) &&
     (data.view === undefined || isView(data.view)) &&
     (data.pinned === undefined || typeof data.pinned === "boolean") &&
-    (data.narrowColumn === undefined || isColumn(data.narrowColumn))
+    (data.narrowColumn === undefined || isColumn(data.narrowColumn)) &&
+    (data.currentCardId === undefined ||
+      data.currentCardId === null ||
+      typeof data.currentCardId === "string")
   );
 }
 
@@ -177,6 +183,7 @@ export function parseState(raw: unknown): BoardState {
     isFiniteNumber(timerIn.durationMs) && timerIn.durationMs > 0
       ? timerIn.durationMs
       : base.timer.durationMs;
+  const currentId = typeof data.currentCardId === "string" ? data.currentCardId : null;
 
   return {
     version: 1,
@@ -193,7 +200,14 @@ export function parseState(raw: unknown): BoardState {
           ? Math.max(0, timerIn.remainingMs)
           : durationMs,
     },
+    // A file may point at a card that was since finished, archived, or removed.
+    currentCardId: cards.some((card) => card.id === currentId && isOpenCard(card)) ? currentId : null,
   };
+}
+
+/** A card the clock can be for: still on the board and not in Done. */
+function isOpenCard(card: Card): boolean {
+  return card.archivedAt == null && card.column !== "done";
 }
 
 export function addToInbox(
@@ -225,6 +239,9 @@ export function moveCard(
     cards: state.cards.map((card) =>
       card.id === id ? { ...card, column, updatedAt: now } : card,
     ),
+    // Finishing the current card also frees the clock.
+    currentCardId:
+      column === "done" && state.currentCardId === id ? null : state.currentCardId,
   };
 }
 
@@ -268,6 +285,28 @@ export function restoreCard(
         : card,
     ),
   };
+}
+
+/** The card the clock is for, if it is still open. */
+export function currentCard(state: BoardState): Card | null {
+  const card = state.cards.find((item) => item.id === state.currentCardId);
+  return card && isOpenCard(card) ? card : null;
+}
+
+/** Point the clock at an open card, or at nothing. Anything else leaves the state alone. */
+export function setCurrentCard(state: BoardState, id: string | null): BoardState {
+  if (id === state.currentCardId) return state;
+  if (id === null) return { ...state, currentCardId: null };
+  const card = state.cards.find((item) => item.id === id);
+  if (!card || !isOpenCard(card)) return state;
+  return { ...state, currentCardId: id };
+}
+
+/** The current card is finished: move it to Done and set the clock up for the next one. */
+export function completeCurrentCard(state: BoardState, now = Date.now()): BoardState {
+  const card = currentCard(state);
+  if (!card) return state;
+  return resetTimer(moveCard(state, card.id, "done", now));
 }
 
 export function visibleCards(state: BoardState, column: Column): Card[] {

@@ -55,6 +55,11 @@
             <span class="clock-secs">00</span>
           </button>
         </div>
+        <div class="clock-focus hidden">
+          <span class="clock-focus-pick">
+            <select id="focus-select" aria-label="What are you working on?"></select>
+          </span>
+        </div>
         <div class="clock-controls">
           <div id="clock-presets" class="clock-presets"></div>
           <form id="custom-duration" class="custom-duration hidden">
@@ -67,6 +72,7 @@
           <p id="clock-duration-status" class="settings-status muted hidden" role="status" aria-live="polite"></p>
           <div class="clock-actions">
             <button type="button" id="timer-toggle" class="primary">Start</button>
+            <button type="button" id="focus-done" class="hidden">Mark done</button>
             <button type="button" id="timer-reset" class="clock-reset" title="Reset" aria-label="Reset">
               <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
