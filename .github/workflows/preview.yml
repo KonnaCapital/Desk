@@ -1,9 +1,17 @@
 name: Preview build
 
-# A test installer for every pull request. It installs "Desk Dev", which has its
-# own identifier and data folder, so trying a change never touches the real board.
+# A test installer for every pull request, and for main. It installs "Desk Dev",
+# which has its own identifier, binary name and data folder, so trying a change
+# never touches the real Desk or its board. Builds on main also warm the Rust
+# cache that pull requests start from.
 on:
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+  push:
+    branches:
+      - main
     paths-ignore:
       - "**.md"
       - "docs/**"
