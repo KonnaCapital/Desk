@@ -1,0 +1,69 @@
+name: Preview build
+
+# A test installer for every pull request. It installs "Desk Dev", which has its
+# own identifier and data folder, so trying a change never touches the real board.
+on:
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Desk Dev installer (Windows x64)
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build the unsigned Desk Dev installer
+        run: npm run tauri build -- --config src-tauri/tauri.dev.conf.json --bundles nsis
+
+      - name: Upload the installer
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Desk-Dev-Windows-x64-Setup
+          path: src-tauri/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Explain how to try it
+        shell: bash
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        run: |
+          {
+            echo "## Try this change"
+            echo
+            echo "[Download the Desk Dev installer]($ARTIFACT_URL) (a zip; sign in to GitHub first)."
+            echo
+            echo "Desk Dev installs next to Desk with its own data, so your real board is untouched."
+            echo "Windows may warn that the installer is unsigned. Choose **More info**, then **Run anyway**."
+            echo "Remove it from Windows Settings when you are done."
+          } >> "$GITHUB_STEP_SUMMARY"
