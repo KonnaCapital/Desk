@@ -326,6 +326,20 @@ describe("clockParts", () => {
   });
 });
 
+describe("Store commits", () => {
+  it("skips saving when a change leaves the board as it was", async () => {
+    const persist = createMemoryPersist();
+    const store = new Store(persist, emptyState());
+    let updates = 0;
+    store.subscribe(() => updates++);
+    store.addToInbox("   ");
+    assert.equal(updates, 0);
+    assert.equal(store.persistenceStatus.status, "saved");
+    await store.flush();
+    assert.equal(persist.primary, null);
+  });
+});
+
 describe("Store timer actions", () => {
   it("toggles start and pause, and nudges only a stopped clock", async () => {
     const store = new Store(createMemoryPersist(), emptyState());

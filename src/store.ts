@@ -296,7 +296,8 @@ export class Store {
   }
 
   private commit(next: BoardState) {
-    if (this.blockWrites) return;
+    // Model functions return the same object when nothing changed; that is not worth a save.
+    if (this.blockWrites || next === this.state) return;
     this.state = next;
     this.revision += 1;
     this.emit();
@@ -392,7 +393,6 @@ export class Store {
     this.commit(setNarrowColumnModel(this.state, column));
   }
 
-  /** Returns false when nothing changed, so a no-op never saves or flashes "Saved". */
   setCurrentCard(id: string | null): boolean {
     const next = setCurrentCardModel(this.state, id);
     if (next === this.state) return false;
