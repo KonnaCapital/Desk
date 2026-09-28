@@ -28,6 +28,8 @@ app-icon.png
 scripts/
 
 # Local agent workspaces and verification artifacts
+playwright-report/
+test-results/
 .worktrees/
 .superpowers/
 output/

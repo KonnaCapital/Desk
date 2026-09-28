@@ -49,6 +49,52 @@ jobs:
       - name: Audit production npm dependencies
         run: npm audit --omit=dev --audit-level=high
 
+  ui:
+    name: UI tests and screenshots
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run UI tests
+        run: npm run test:ui
+
+      - name: Upload screenshots and report
+        id: upload
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          path: |
+            shots/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Link the screenshots
+        if: ${{ !cancelled() && steps.upload.outputs.artifact-url != '' }}
+        shell: bash
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        run: |
+          {
+            echo "## UI screenshots"
+            echo
+            echo "[Download the screenshots and test report]($ARTIFACT_URL) (a zip; sign in to GitHub first)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   rust-audit:
     name: RustSec advisory audit
     runs-on: ubuntu-latest

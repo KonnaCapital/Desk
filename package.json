@@ -17,7 +17,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "node --experimental-strip-types --test \"src/*.test.ts\""
+    "test": "node --experimental-strip-types --test \"src/*.test.ts\"",
+    "test:ui": "playwright test"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -26,6 +27,7 @@
     "@tauri-apps/plugin-notification": "^2"
   },
   "devDependencies": {
+    "@playwright/test": "1.56.1",
     "@tauri-apps/cli": "^2",
     "typescript": "~5.6.2",
     "vite": "^6.0.3"
