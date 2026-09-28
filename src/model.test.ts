@@ -6,6 +6,7 @@ import {
   clockDigitsLayout,
   clockParts,
   COLUMNS,
+  completeTimer,
   emptyState,
   formatTime,
   hoursToDurationMs,
@@ -20,6 +21,7 @@ import {
   setDuration,
   sizeClass,
   startTimer,
+  timerPhase,
   visibleCards,
 } from "./model.ts";
 import {
@@ -152,6 +154,19 @@ describe("timer", () => {
     const started = startTimer(emptyState(), 0);
     assert.equal(isFinished(started.timer, started.timer.endsAt! + 1), true);
     assert.equal(isFinished(started.timer, 1), false);
+  });
+
+  it("tells idle, running, paused, and done apart", () => {
+    let state = emptyState();
+    assert.equal(timerPhase(state.timer, 0), "idle");
+    state = startTimer(state, 0);
+    assert.equal(timerPhase(state.timer, 5_000), "running");
+    state = pauseTimer(state, 5_000);
+    assert.equal(timerPhase(state.timer, 9_000), "paused");
+    state = resetTimer(state);
+    assert.equal(timerPhase(state.timer, 9_000), "idle");
+    state = completeTimer(startTimer(state, 0));
+    assert.equal(timerPhase(state.timer, 9_000), "done");
   });
 });
 

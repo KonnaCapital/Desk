@@ -369,45 +369,57 @@ button,
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  font-family: "Segoe UI Variable Display", var(--font);
   font-variant-numeric: tabular-nums;
-  font-weight: 400;
+  font-weight: 300;
   font-size: max(20px, min(var(--digit-width), var(--digit-height), var(--digit-max)));
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   line-height: 0.95;
   background: none;
   border: none;
   padding: 0;
-  color: var(--text);
+  color: #c9c9c9;
   cursor: pointer;
   white-space: nowrap;
   -webkit-app-region: no-drag;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
 }
 
 .clock-digits[data-hours="true"] {
   --digit-width: 13cqw;
 }
 
+.clock-hours {
+  display: inline-flex;
+  align-items: center;
+}
+
 .clock-hours::after {
   content: ":";
-  font-weight: 600;
+}
+
+/* A quiet colon: smaller and dimmer than the digits it separates. */
+.clock-sep,
+.clock-hours::after {
+  font-size: 0.7em;
+  font-weight: 300;
+  color: var(--muted);
+  letter-spacing: 0;
+  padding: 0 0.08em;
+}
+
+body[data-clock-digits="stack"] .clock-hours {
+  align-items: baseline;
 }
 
 body[data-clock-digits="stack"] .clock-hours::after {
   content: "h";
   font-size: 0.35em;
-  font-weight: 400;
-  color: var(--muted);
+  padding: 0 0 0 0.04em;
 }
 
 body[data-timer="running"] .clock-digits {
   --digit-height: calc(100cqh - 40px);
-}
-
-.clock-sep {
-  font-weight: 600;
-  opacity: 0.92;
-  letter-spacing: 0;
-  padding: 0 0.06em;
 }
 
 .clock-hours[hidden] {
@@ -427,10 +439,7 @@ body[data-clock-digits="stack"] .clock-digits {
 
 body[data-clock-digits="stack"] .clock-sep {
   font-size: 0.48em;
-  font-weight: 700;
   line-height: 0.7;
-  opacity: 1;
-  color: var(--text);
   margin: 0.02em 0;
   padding: 0;
 }
@@ -440,12 +449,26 @@ body[data-clock-digits="stack"] .clock-sep {
   filter: none;
 }
 
-.clock-digits.running {
+body[data-timer="running"] .clock-digits {
   color: #f3f0ff;
 }
 
-.clock-digits.done {
+/* Paused must read differently from idle, even pinned small in a corner. */
+body[data-timer="paused"] .clock-digits {
+  color: var(--muted);
+  animation: clock-breathe 2.4s ease-in-out infinite;
+}
+
+body[data-timer="done"] .clock-digits {
   color: var(--accent);
+  text-shadow: 0 0 0.25em rgba(139, 108, 239, 0.35);
+  animation: clock-breathe 1.6s ease-in-out 3;
+}
+
+@keyframes clock-breathe {
+  50% {
+    opacity: 0.55;
+  }
 }
 
 .clock-presets,
@@ -700,6 +723,7 @@ body[data-size="xs"] .chrome {
 body[data-size="xs"] .clock-digits {
   --digit-height: calc(100cqh - 28px);
   --digit-max: 88px;
+  font-weight: 400;
 }
 
 body[data-clock-digits="stack"] .clock-digits {
@@ -742,6 +766,7 @@ body[data-view="clock"][data-size="xs"] .clock-digits {
   }
 
   body:not([data-size="xs"])[data-timer="idle"] .clock-digits,
+  body:not([data-size="xs"])[data-timer="paused"] .clock-digits,
   body:not([data-size="xs"])[data-timer="done"] .clock-digits {
     --digit-height: calc(100cqh - 144px);
   }
