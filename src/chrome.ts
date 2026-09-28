@@ -21,6 +21,7 @@ import {
 } from "./clock-solo.ts";
 import { WindowPinController } from "./pin.ts";
 import type { PersistenceState, Store } from "./store.ts";
+import { version } from "../package.json";
 
 export async function mountChrome(store: Store): Promise<void> {
   const boardBtn = document.querySelector<HTMLButtonElement>("#view-board")!;
@@ -39,6 +40,7 @@ export async function mountChrome(store: Store): Promise<void> {
   const autostartStatus = document.querySelector<HTMLElement>("#settings-autostart-status")!;
   const showDataFolderBtn = document.querySelector<HTMLButtonElement>("#show-data-folder")!;
   const dataFolderStatus = document.querySelector<HTMLElement>("#settings-data-folder-status")!;
+  const versionLabel = document.querySelector<HTMLElement>("#settings-version")!;
   const boardView = document.querySelector<HTMLElement>("#board-view")!;
   const clockView = document.querySelector<HTMLElement>("#clock-view")!;
   const chrome = document.querySelector<HTMLElement>(".chrome")!;
@@ -92,6 +94,7 @@ export async function mountChrome(store: Store): Promise<void> {
     .then((api) => new AutostartController(api))
     .catch(() => new AutostartController(null));
   let autostartController: AutostartController | null = null;
+  versionLabel.textContent = `Desk ${version}`;
   const settingsModal = createModalController(
     settingsBtn,
     closeSettingsBtn,
