@@ -6,6 +6,8 @@ The door is open. Propose anything. It will be looked at one pull request at a t
 
 One idea per pull request. That is enough.
 
+[ARCHITECTURE.md](ARCHITECTURE.md) is the map: what each file owns, how a change flows, and the checks.
+
 ## Run locally
 
 Install Node.js 22.18 or newer and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/), then run:
@@ -23,6 +25,11 @@ Before submitting a change:
 
 ```sh
 npm test
+npm run test:ui
 npm run build
 cargo check --locked --manifest-path src-tauri/Cargo.toml
 ```
+
+`npm run test:ui` needs Chromium for Playwright once: `npx playwright install chromium`. It saves screenshots of the clock and board in `shots/`.
+
+Every pull request builds a Desk Dev test installer. Find it in the pull request's checks, under *Preview build*.
