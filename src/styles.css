@@ -68,6 +68,14 @@ button.primary:hover {
   filter: brightness(1.08);
 }
 
+/* Icon buttons disable briefly while the window pin applies; keep them from flickering. */
+button:disabled:not(.icon-btn),
+button:disabled:not(.icon-btn):hover {
+  background: var(--bg-hover);
+  opacity: 0.45;
+  cursor: default;
+}
+
 input {
   background: var(--bg-raised);
   border: 1px solid var(--border);
@@ -266,7 +274,14 @@ button,
 }
 
 .count {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.05);
   color: var(--faint);
+  font-size: 10px;
+  letter-spacing: 0;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
@@ -288,6 +303,17 @@ button,
   padding: 8px 9px;
   cursor: grab;
   user-select: text;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.card:hover {
+  background: var(--bg-hover);
+  border-color: #3a3a3a;
+}
+
+.card:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .card[contenteditable="true"] {

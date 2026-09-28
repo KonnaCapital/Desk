@@ -151,6 +151,8 @@ export function mountBoard(store: Store): void {
   confirmOkBtn.addEventListener("click", () => {
     store.archiveDone();
     confirmModal.close();
+    // Done is empty now and Archive Done disabled, so it cannot take focus back.
+    if (archiveDoneBtn.disabled) openArchiveBtn.focus();
   });
   confirmOverlay.addEventListener("click", (event) => {
     if (event.target === confirmOverlay) confirmModal.close();
@@ -447,6 +449,7 @@ export function mountBoard(store: Store): void {
 
     const size = document.body.dataset.size as SizeClass | undefined;
     const narrow = size === "sm" || size === "xs";
+    archiveDoneBtn.disabled = visibleCards(store.state, "done").length === 0;
     switchEl.innerHTML = COLUMNS.map(
       (col) =>
         `<button type="button" data-column="${col.id}" class="${store.state.narrowColumn === col.id ? "active" : ""}">${col.label}</button>`,
