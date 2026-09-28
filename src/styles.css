@@ -341,12 +341,18 @@ button,
 }
 
 .clock-view {
+  /* Height the controls under the digits need; the digits get the rest. */
+  --clock-controls-h: 150px;
   align-items: center;
   justify-content: center;
   position: relative;
   cursor: grab;
   overflow: hidden;
   container-type: size;
+}
+
+body[data-clock-custom="open"] .clock-view {
+  --clock-controls-h: 196px;
 }
 
 .clock-face {
@@ -363,7 +369,7 @@ button,
 
 .clock-digits {
   --digit-width: 18cqw;
-  --digit-height: calc(100cqh - 196px);
+  --digit-height: calc(100cqh - var(--clock-controls-h));
   --digit-max: 220px;
   display: flex;
   align-items: center;
@@ -480,8 +486,69 @@ body[data-timer="done"] .clock-digits {
   -webkit-app-region: no-drag;
 }
 
+/* One segmented pill instead of loose buttons. */
+.clock-presets {
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+}
+
+.clock-presets button {
+  min-width: 44px;
+  padding: 4px 12px;
+  background: transparent;
+  border-color: transparent;
+  border-radius: 99px;
+  color: var(--muted);
+}
+
+.clock-presets button:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.clock-presets button.active {
+  background: var(--accent-dim);
+  border-color: transparent;
+  color: #efe9ff;
+}
+
+.clock-actions {
+  gap: 10px;
+}
+
+.clock-actions .primary {
+  min-width: 96px;
+  padding: 7px 22px;
+  border-radius: 99px;
+  font-size: 14px;
+}
+
+.clock-reset {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+}
+
+.clock-reset:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.clock-reset svg {
+  display: block;
+}
+
 .custom-duration input {
-  width: 64px;
+  width: 56px;
+  padding: 5px 8px;
   text-align: center;
 }
 
@@ -728,12 +795,12 @@ body[data-size="xs"] .clock-digits {
 
 body[data-clock-digits="stack"] .clock-digits {
   --digit-width: 48cqw;
-  --digit-height: calc((100cqh - 196px) / 2.2);
+  --digit-height: calc((100cqh - var(--clock-controls-h)) / 2.2);
   --digit-max: 200px;
 }
 
 body[data-clock-digits="stack"] .clock-digits[data-hours="true"] {
-  --digit-height: calc((100cqh - 196px) / 3.2);
+  --digit-height: calc((100cqh - var(--clock-controls-h)) / 3.2);
 }
 
 body[data-timer="running"][data-clock-digits="stack"] .clock-digits {
@@ -759,16 +826,30 @@ body[data-view="clock"][data-size="xs"] .clock-digits {
   min-width: 0;
 }
 
+body[data-size="xs"] .clock-actions .primary {
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
 @container (max-height: 210px) {
   body:not([data-size="xs"]) .custom-duration,
+  body:not([data-size="xs"]) .clock-presets [data-custom],
   body:not([data-size="xs"]) #clock-duration-status {
     display: none;
   }
 
-  body:not([data-size="xs"])[data-timer="idle"] .clock-digits,
-  body:not([data-size="xs"])[data-timer="paused"] .clock-digits,
-  body:not([data-size="xs"])[data-timer="done"] .clock-digits {
-    --digit-height: calc(100cqh - 144px);
+  /* Tighter spacing so the digits keep some size above the controls. */
+  body:not([data-size="xs"]):not([data-clock-solo="true"]) .clock-face {
+    gap: 10px;
+    padding-top: 6px;
+    padding-bottom: 20px;
+  }
+
+  /* Solo hides the controls, so it keeps its own full-height sizing. */
+  body:not([data-size="xs"]):not([data-clock-solo="true"])[data-timer="idle"] .clock-digits,
+  body:not([data-size="xs"]):not([data-clock-solo="true"])[data-timer="paused"] .clock-digits,
+  body:not([data-size="xs"]):not([data-clock-solo="true"])[data-timer="done"] .clock-digits {
+    --digit-height: calc(100cqh - 116px);
   }
 }
 

@@ -365,6 +365,21 @@ export function setDuration(
   };
 }
 
+const MAX_DURATION_MS = 24 * HOUR;
+
+/** Step by whole minutes; larger steps land on their own multiples (27 +5 → 30). */
+export function nudgeDurationMs(durationMs: number, deltaMinutes: number): number {
+  const minutes = Math.round(durationMs / MIN);
+  const step = Math.abs(deltaMinutes);
+  const base =
+    step > 1
+      ? deltaMinutes > 0
+        ? Math.floor(minutes / step) * step
+        : Math.ceil(minutes / step) * step
+      : minutes;
+  return Math.min(MAX_DURATION_MS, Math.max(MIN, (base + deltaMinutes) * MIN));
+}
+
 export function hoursToDurationMs(hours: number, minutes = 0): number {
   const h = Number.isFinite(hours) ? Math.max(0, hours) : 0;
   const m = Number.isFinite(minutes) ? Math.max(0, minutes) : 0;

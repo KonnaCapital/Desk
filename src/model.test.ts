@@ -13,6 +13,7 @@ import {
   isFinished,
   isStateEnvelope,
   moveCard,
+  nudgeDurationMs,
   parseState,
   pauseTimer,
   remainingMs,
@@ -154,6 +155,18 @@ describe("timer", () => {
     const started = startTimer(emptyState(), 0);
     assert.equal(isFinished(started.timer, started.timer.endsAt! + 1), true);
     assert.equal(isFinished(started.timer, 1), false);
+  });
+
+  it("nudges a duration by whole minutes within one minute and one day", () => {
+    assert.equal(nudgeDurationMs(25 * 60_000, 1), 26 * 60_000);
+    assert.equal(nudgeDurationMs(25 * 60_000, -1), 24 * 60_000);
+    assert.equal(nudgeDurationMs(25 * 60_000 + 20_000, 1), 26 * 60_000);
+    assert.equal(nudgeDurationMs(27 * 60_000, 5), 30 * 60_000);
+    assert.equal(nudgeDurationMs(27 * 60_000, -5), 25 * 60_000);
+    assert.equal(nudgeDurationMs(25 * 60_000, 5), 30 * 60_000);
+    assert.equal(nudgeDurationMs(60_000, -1), 60_000);
+    assert.equal(nudgeDurationMs(3 * 60_000, -5), 60_000);
+    assert.equal(nudgeDurationMs(24 * 3_600_000, 5), 24 * 3_600_000);
   });
 
   it("tells idle, running, paused, and done apart", () => {
