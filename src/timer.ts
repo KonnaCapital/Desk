@@ -6,6 +6,7 @@ import {
   nudgeDurationMs,
   remainingMs,
   timerPhase,
+  windowTitle,
 } from "./model.ts";
 import { t } from "./i18n.ts";
 import type { Store } from "./store.ts";
@@ -13,7 +14,11 @@ import type { Store } from "./store.ts";
 /** One mouse-wheel notch; trackpads add up small deltas until they reach it. */
 const WHEEL_NOTCH = 40;
 
-export function mountTimer(store: Store, onComplete: () => void): void {
+export function mountTimer(
+  store: Store,
+  onComplete: () => void,
+  onTitle?: (title: string) => void,
+): void {
   const digits = document.querySelector<HTMLButtonElement>("#clock-digits")!;
   const hoursEl = document.querySelector<HTMLElement>(".clock-hours")!;
   const minsEl = document.querySelector<HTMLElement>(".clock-mins")!;
@@ -138,6 +143,7 @@ export function mountTimer(store: Store, onComplete: () => void): void {
     minsEl.textContent = parts.minutes;
     secsEl.textContent = parts.seconds;
     document.body.dataset.timer = timerPhase(timer, now);
+    onTitle?.(windowTitle(timer, now));
     const ratio = timer.durationMs > 0 ? rem / timer.durationMs : 0;
     progressFill.style.transform = `scaleX(${Math.max(0, Math.min(1, ratio))})`;
     toggle.textContent = timer.running ? t("pause") : t("start");
