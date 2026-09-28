@@ -4,6 +4,7 @@ import {
   type View,
   addToInbox as addToInboxModel,
   archiveDone as archiveDoneModel,
+  completeCurrentCard as completeCurrentCardModel,
   completeTimer as completeTimerModel,
   editCard as editCardModel,
   emptyState,
@@ -14,6 +15,7 @@ import {
   pauseTimer as pauseTimerModel,
   resetTimer as resetTimerModel,
   restoreCard as restoreCardModel,
+  setCurrentCard as setCurrentCardModel,
   setDuration as setDurationModel,
   setNarrowColumn as setNarrowColumnModel,
   setPinned as setPinnedModel,
@@ -388,6 +390,21 @@ export class Store {
 
   setNarrowColumn(column: Column) {
     this.commit(setNarrowColumnModel(this.state, column));
+  }
+
+  /** Returns false when nothing changed, so a no-op never saves or flashes "Saved". */
+  setCurrentCard(id: string | null): boolean {
+    const next = setCurrentCardModel(this.state, id);
+    if (next === this.state) return false;
+    this.commit(next);
+    return true;
+  }
+
+  completeCurrentCard(): boolean {
+    const next = completeCurrentCardModel(this.state);
+    if (next === this.state) return false;
+    this.commit(next);
+    return true;
   }
 
   setDuration(durationMs: number): boolean {

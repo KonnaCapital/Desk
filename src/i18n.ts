@@ -16,6 +16,8 @@ const EN = {
   durationTooShort: "Minimum is 1 minute.",
   custom: "Custom",
   clockHint: "Scroll to set the time",
+  focusPrompt: "What are you working on?",
+  focusNone: "No card",
   timerDone: "Timer at zero",
   showDataFolderError: "Could not open the data folder.",
 } as const;

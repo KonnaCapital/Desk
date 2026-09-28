@@ -59,7 +59,7 @@ export async function expectDigitsFit(page: Page) {
   if (chromeVisible) {
     expect(overlaps(box, await boxOf(page.locator(".chrome"))), "digits overlap the title bar").toBe(false);
   }
-  for (const selector of ["#clock-presets", "#custom-duration", ".clock-actions"]) {
+  for (const selector of ["#clock-presets", "#custom-duration", ".clock-actions", ".clock-focus"]) {
     const control = page.locator(selector);
     if (!(await control.isVisible())) continue;
     expect(overlaps(box, await boxOf(control)), `digits overlap ${selector}`).toBe(false);

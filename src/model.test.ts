@@ -6,7 +6,9 @@ import {
   clockDigitsLayout,
   clockParts,
   COLUMNS,
+  completeCurrentCard,
   completeTimer,
+  currentCard,
   emptyState,
   formatTime,
   hoursToDurationMs,
@@ -19,6 +21,7 @@ import {
   remainingMs,
   resetTimer,
   restoreCard,
+  setCurrentCard,
   setDuration,
   sizeClass,
   startTimer,
@@ -191,6 +194,67 @@ describe("timer", () => {
     assert.equal(windowTitle(state.timer, 200_000), "23:13 paused · Desk");
     state = completeTimer(startTimer(state, 0));
     assert.equal(windowTitle(state.timer, 0), "Desk");
+  });
+});
+
+describe("current card", () => {
+  function board() {
+    let state = addToInbox(emptyState(), "done already", 1);
+    state = addToInbox(state, "write the note", 2);
+    const [note, finished] = state.cards;
+    state = moveCard(state, note.id, "today", 3);
+    state = moveCard(state, finished.id, "done", 4);
+    return { state, note: note.id, finished: finished.id };
+  }
+
+  it("points the clock at an open card and back at nothing", () => {
+    const { state, note } = board();
+    assert.equal(state.currentCardId, null);
+    const pointed = setCurrentCard(state, note);
+    assert.equal(pointed.currentCardId, note);
+    assert.equal(currentCard(pointed)?.text, "write the note");
+    assert.equal(setCurrentCard(pointed, null).currentCardId, null);
+  });
+
+  it("leaves the state alone for the same, a done, or a missing card", () => {
+    const { state, note, finished } = board();
+    const pointed = setCurrentCard(state, note);
+    assert.equal(setCurrentCard(pointed, note), pointed);
+    assert.equal(setCurrentCard(state, finished), state);
+    assert.equal(setCurrentCard(state, "missing"), state);
+    assert.equal(setCurrentCard(state, null), state);
+  });
+
+  it("frees the clock when the card moves to Done, but not for other moves", () => {
+    const { state, note } = board();
+    const pointed = setCurrentCard(state, note);
+    assert.equal(moveCard(pointed, note, "todo", 5).currentCardId, note);
+    assert.equal(moveCard(pointed, note, "done", 5).currentCardId, null);
+  });
+
+  it("marks the current card done and resets the clock for the next one", () => {
+    const { state, note } = board();
+    let pointed = startTimer(setCurrentCard(state, note), 0);
+    pointed = completeTimer(pointed);
+    const next = completeCurrentCard(pointed, 9);
+    assert.equal(next.currentCardId, null);
+    assert.equal(next.cards.find((card) => card.id === note)?.column, "done");
+    assert.equal(next.timer.remainingMs, next.timer.durationMs);
+    assert.equal(completeCurrentCard(next), next);
+  });
+
+  it("reads the current card from a file, dropping ones that are gone or finished", () => {
+    const { state, note, finished } = board();
+    const saved = JSON.parse(JSON.stringify(setCurrentCard(state, note)));
+    assert.equal(isStateEnvelope(saved), true);
+    assert.equal(parseState(saved).currentCardId, note);
+    assert.equal(parseState({ ...saved, currentCardId: finished }).currentCardId, null);
+    assert.equal(parseState({ ...saved, currentCardId: "missing" }).currentCardId, null);
+    const older = { ...saved };
+    delete older.currentCardId;
+    assert.equal(isStateEnvelope(older), true);
+    assert.equal(parseState(older).currentCardId, null);
+    assert.equal(isStateEnvelope({ ...saved, currentCardId: 7 }), false);
   });
 });
 

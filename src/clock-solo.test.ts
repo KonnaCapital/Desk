@@ -51,4 +51,11 @@ describe("clockSoloTarget", () => {
     assert.equal(clockSoloTarget(fakeTarget("control")), "control");
     assert.equal(clockSoloTarget(fakeTarget("face")), "face");
   });
+
+  it("treats the card picker as a control, so picking never hides the chrome", () => {
+    const picker = {
+      closest: (selector: string) => (selector.includes(".clock-focus") ? {} : null),
+    } as unknown as Element;
+    assert.equal(clockSoloTarget(picker), "control");
+  });
 });

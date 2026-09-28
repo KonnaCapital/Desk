@@ -110,7 +110,7 @@ export async function mountChrome(store: Store, appName = "Desk"): Promise<void>
     if (store.state.pinned) return;
     if (event.button !== 0) return;
     const target = event.target as HTMLElement | null;
-    if (target?.closest("button, input, textarea, a, .card")) return;
+    if (target?.closest("button, input, textarea, select, a, .card")) return;
     liveDrag = true;
     void nativeWindow?.startDragging();
   };

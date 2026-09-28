@@ -106,6 +106,7 @@ export function mountBoard(store: Store): void {
   let deferredPaint = false;
   let lastRenderedCards = store.state.cards;
   let lastRenderedNarrowColumn = store.state.narrowColumn;
+  let lastRenderedCurrentId = store.state.currentCardId;
   let lastRenderedSize = document.body.dataset.size;
 
   if (store.writesBlocked) {
@@ -464,7 +465,9 @@ export function mountBoard(store: Store): void {
           : cards
               .map(
                 (card) =>
-                  `<article class="card" data-id="${escapeHtml(card.id)}" tabindex="0">${escapeHtml(card.text)}</article>`,
+                  card.id === store.state.currentCardId
+                    ? `<article class="card is-current" data-id="${escapeHtml(card.id)}" tabindex="0" aria-current="true">${escapeHtml(card.text)}</article>`
+                    : `<article class="card" data-id="${escapeHtml(card.id)}" tabindex="0">${escapeHtml(card.text)}</article>`,
               )
               .join("");
       return `<section class="col${active ? " active" : ""}" data-column="${col.id}">
@@ -496,6 +499,7 @@ export function mountBoard(store: Store): void {
     }
     lastRenderedCards = store.state.cards;
     lastRenderedNarrowColumn = store.state.narrowColumn;
+    lastRenderedCurrentId = store.state.currentCardId;
     lastRenderedSize = document.body.dataset.size;
     deferredPaint = false;
   }
@@ -506,6 +510,7 @@ export function mountBoard(store: Store): void {
       deferredPaint ||
       store.state.cards !== lastRenderedCards ||
       store.state.narrowColumn !== lastRenderedNarrowColumn ||
+      store.state.currentCardId !== lastRenderedCurrentId ||
       document.body.dataset.size !== lastRenderedSize;
     if (!changed) return;
     if (shouldHoldBoardPaint(editingId, dragId, pending?.id ?? null)) {
