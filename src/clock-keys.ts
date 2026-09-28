@@ -1,4 +1,4 @@
-import { PRESETS, nudgeDurationMs, type View } from "./model.ts";
+import { PRESETS, type View } from "./model.ts";
 import type { Store } from "./store.ts";
 
 export type ClockKeyInput = {
@@ -73,8 +73,7 @@ export function mountClockKeys(store: Store): void {
     event.preventDefault();
     switch (action.kind) {
       case "toggle":
-        if (store.state.timer.running) store.pauseTimer();
-        else store.startTimer();
+        store.toggleTimer();
         break;
       case "reset":
         store.resetTimer();
@@ -83,7 +82,7 @@ export function mountClockKeys(store: Store): void {
         store.setDuration(PRESETS[action.index].ms);
         break;
       case "nudge":
-        store.setDuration(nudgeDurationMs(store.state.timer.durationMs, action.minutes));
+        store.nudgeDuration(action.minutes);
         break;
     }
   });

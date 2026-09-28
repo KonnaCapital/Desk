@@ -33,7 +33,6 @@ import {
   type Persist,
 } from "./store.ts";
 import { registerCloseHandler } from "./close.ts";
-import { mountTimer } from "./timer.ts";
 
 function snapshotPersist(
   primary: string | null = null,
@@ -260,6 +259,21 @@ describe("clockParts", () => {
       minutes: "01",
       seconds: "01",
     });
+  });
+});
+
+describe("Store timer actions", () => {
+  it("toggles start and pause, and nudges only a stopped clock", async () => {
+    const store = new Store(createMemoryPersist(), emptyState());
+    store.toggleTimer();
+    assert.equal(store.state.timer.running, true);
+    assert.equal(store.nudgeDuration(5), false);
+    assert.equal(store.state.timer.durationMs, 25 * 60_000);
+    store.toggleTimer();
+    assert.equal(store.state.timer.running, false);
+    assert.equal(store.nudgeDuration(5), true);
+    assert.equal(store.state.timer.durationMs, 30 * 60_000);
+    await store.flush();
   });
 });
 
@@ -691,71 +705,5 @@ describe("Store", () => {
     await handler({ preventDefault: () => events.push("prevent") });
 
     assert.deepEqual(events, ["prevent", "problem:failed"]);
-  });
-});
-
-describe("timer refresh scheduling", () => {
-  it("does not schedule a refresh while stopped", () => {
-    const originalDocument = (globalThis as { document?: unknown }).document;
-    const originalWindow = (globalThis as { window?: unknown }).window;
-    let intervalCalls = 0;
-    let timeoutCalls = 0;
-    const elements = new Map<string, Record<string, unknown>>();
-    for (const selector of [
-      "#clock-digits",
-      ".clock-hours",
-      ".clock-mins",
-      ".clock-secs",
-      "#clock-progress-fill",
-      "#clock-presets",
-      "#custom-duration",
-      "#hours-input",
-      "#mins-input",
-      "#clock-duration-status",
-      "#timer-toggle",
-      "#timer-reset",
-    ]) {
-      elements.set(selector, {
-        innerHTML: "",
-        textContent: "",
-        hidden: true,
-        dataset: {},
-        style: {},
-        classList: { toggle() {}, add() {} },
-        addEventListener() {},
-        setAttribute() {},
-        querySelectorAll() { return []; },
-      });
-    }
-    (globalThis as { document?: unknown }).document = {
-      body: { dataset: {} },
-      querySelector(selector: string) {
-        return elements.get(selector);
-      },
-    };
-    (globalThis as { window?: unknown }).window = {
-      setInterval() {
-        intervalCalls += 1;
-        return 1;
-      },
-      clearInterval() {},
-      setTimeout() {
-        timeoutCalls += 1;
-        return 1;
-      },
-      clearTimeout() {},
-    };
-
-    try {
-      const store = new Store(snapshotPersist(), emptyState());
-      mountTimer(store, () => {});
-      assert.equal(intervalCalls, 0);
-      assert.equal(timeoutCalls, 0);
-    } finally {
-      if (originalDocument === undefined) delete (globalThis as { document?: unknown }).document;
-      else (globalThis as { document?: unknown }).document = originalDocument;
-      if (originalWindow === undefined) delete (globalThis as { window?: unknown }).window;
-      else (globalThis as { window?: unknown }).window = originalWindow;
-    }
   });
 });

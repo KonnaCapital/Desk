@@ -26,7 +26,18 @@ function beep() {
   osc.onended = () => void ctx.close();
 }
 
-async function notifyDone() {
+/** "Desk", or "Desk Dev" for a test build, so the two never look alike. */
+async function loadAppName(): Promise<string> {
+  if (!isTauri()) return "Desk";
+  try {
+    const { getName } = await import("@tauri-apps/api/app");
+    return await getName();
+  } catch {
+    return "Desk";
+  }
+}
+
+async function notifyDone(appName: string) {
   beep();
   try {
     const notification = await import("@tauri-apps/plugin-notification");
@@ -36,7 +47,7 @@ async function notifyDone() {
       if (permission !== "granted") return;
     }
     await notification.sendNotification({
-      title: "Desk",
+      title: appName,
       body: t("timerDone"),
     });
   } catch {
@@ -68,16 +79,15 @@ async function boot() {
   initI18n();
   const persist = isTauri() ? await createTauriPersist() : createMemoryPersist();
   const store = await Store.load(persist);
+  const appName = await loadAppName();
 
-  await mountChrome(store);
+  await mountChrome(store, appName);
   mountBoard(store);
-  mountTimer(
-    store,
-    () => {
-      void notifyDone();
-    },
-    createTitleSync(),
-  );
+  mountTimer(store, {
+    onComplete: () => void notifyDone(appName),
+    onTitle: createTitleSync(),
+    appName,
+  });
   mountClockKeys(store);
 
   const flush = () => {

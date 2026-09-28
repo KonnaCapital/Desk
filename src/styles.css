@@ -367,21 +367,29 @@ button,
 }
 
 .clock-view {
-  /* Height the controls under the digits need; the digits get the rest. */
-  --clock-controls-h: 150px;
   align-items: center;
   justify-content: center;
   position: relative;
   cursor: grab;
   overflow: hidden;
-  container-type: size;
+  container: clock-view / size;
 }
 
-body[data-clock-custom="open"] .clock-view {
-  --clock-controls-h: 196px;
-}
-
+/*
+ * Clock sizing. The time sits in .clock-display, a size container that the
+ * layout sizes: its ideal height for the window width, or less when the
+ * controls need the room. The digits fill the display, so no rule has to know
+ * how tall the controls are.
+ *   --digit-width  font size of the time as a share of the window width
+ *   --digit-max    largest font size
+ *   --digit-lines  height of the time in font sizes (one row, or stacked)
+ *   --digit-span   width of the time in font sizes
+ */
 .clock-face {
+  --digit-width: 18cqw;
+  --digit-max: 220px;
+  --digit-lines: 0.95;
+  --digit-span: 2.8;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -393,18 +401,49 @@ body[data-clock-custom="open"] .clock-view {
   min-height: 0;
 }
 
+body[data-clock-hours="true"] .clock-face {
+  --digit-width: 13cqw;
+  --digit-span: 4;
+}
+
+body[data-clock-digits="stack"] .clock-face {
+  --digit-width: 48cqw;
+  --digit-max: 200px;
+  --digit-lines: 2.2;
+  --digit-span: 1.3;
+}
+
+body[data-clock-digits="stack"][data-clock-hours="true"] .clock-face {
+  --digit-lines: 3.2;
+}
+
+.clock-display {
+  flex: 0 1 calc(min(var(--digit-width), var(--digit-max)) * var(--digit-lines));
+  min-height: 0;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  container: clock-display / size;
+}
+
+.clock-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
 .clock-digits {
-  --digit-width: 18cqw;
-  --digit-height: calc(100cqh - var(--clock-controls-h));
-  --digit-max: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
   font-family: "Segoe UI Variable Display", var(--font);
   font-variant-numeric: tabular-nums;
   font-weight: 300;
-  font-size: max(20px, min(var(--digit-width), var(--digit-height), var(--digit-max)));
+  font-size: max(
+    20px,
+    min(calc(100cqh / var(--digit-lines)), calc(100cqw / var(--digit-span)), var(--digit-max))
+  );
   letter-spacing: 0.02em;
   line-height: 0.95;
   background: none;
@@ -415,10 +454,6 @@ body[data-clock-custom="open"] .clock-view {
   white-space: nowrap;
   -webkit-app-region: no-drag;
   transition: color 0.3s ease, text-shadow 0.3s ease;
-}
-
-.clock-digits[data-hours="true"] {
-  --digit-width: 13cqw;
 }
 
 .clock-hours {
@@ -448,10 +483,6 @@ body[data-clock-digits="stack"] .clock-hours::after {
   content: "h";
   font-size: 0.35em;
   padding: 0 0 0 0.04em;
-}
-
-body[data-timer="running"] .clock-digits {
-  --digit-height: calc(100cqh - 40px);
 }
 
 .clock-hours[hidden] {
@@ -614,9 +645,7 @@ body[data-timer="running"] #clock-progress-fill {
   transition: transform 1s linear;
 }
 
-body[data-timer="running"] .clock-presets,
-body[data-timer="running"] .custom-duration,
-body[data-timer="running"] .clock-actions {
+body[data-timer="running"] .clock-controls {
   display: none;
 }
 
@@ -814,33 +843,21 @@ body[data-size="xs"] .chrome {
 }
 
 body[data-size="xs"] .clock-digits {
-  --digit-height: calc(100cqh - 28px);
-  --digit-max: 88px;
   font-weight: 400;
 }
 
-body[data-clock-digits="stack"] .clock-digits {
-  --digit-width: 48cqw;
-  --digit-height: calc((100cqh - var(--clock-controls-h)) / 2.2);
-  --digit-max: 200px;
-}
-
-body[data-clock-digits="stack"] .clock-digits[data-hours="true"] {
-  --digit-height: calc((100cqh - var(--clock-controls-h)) / 3.2);
-}
-
-body[data-timer="running"][data-clock-digits="stack"] .clock-digits {
-  --digit-height: calc((100cqh - 40px) / 2.2);
-}
-
-body[data-timer="running"][data-clock-digits="stack"] .clock-digits[data-hours="true"] {
-  --digit-height: calc((100cqh - 40px) / 3.2);
-}
-
 body[data-size="xs"] .clock-face {
+  --digit-max: 88px;
   flex-direction: row;
   gap: 8px;
   padding: 4px 8px 22px;
+}
+
+/* One row: the display takes the width the time needs, and Start stays beside it. */
+body[data-size="xs"] .clock-display {
+  flex: 0 1 calc(var(--digit-max) * var(--digit-span));
+  align-self: stretch;
+  min-width: 0;
 }
 
 body[data-size="xs"] .capture {
@@ -857,25 +874,22 @@ body[data-size="xs"] .clock-actions .primary {
   font-size: 13px;
 }
 
-@container (max-height: 210px) {
-  body:not([data-size="xs"]) .custom-duration,
-  body:not([data-size="xs"]) .clock-presets [data-custom],
-  body:not([data-size="xs"]) #clock-duration-status {
+@container clock-view (max-height: 210px) {
+  .custom-duration,
+  .clock-presets [data-custom],
+  #clock-duration-status {
     display: none;
   }
 
-  /* Tighter spacing so the digits keep some size above the controls. */
-  body:not([data-size="xs"]):not([data-clock-solo="true"]) .clock-face {
+  /* Tighter spacing leaves the digits more room. */
+  .clock-face,
+  .clock-controls {
     gap: 10px;
-    padding-top: 6px;
-    padding-bottom: 20px;
   }
 
-  /* Solo hides the controls, so it keeps its own full-height sizing. */
-  body:not([data-size="xs"]):not([data-clock-solo="true"])[data-timer="idle"] .clock-digits,
-  body:not([data-size="xs"]):not([data-clock-solo="true"])[data-timer="paused"] .clock-digits,
-  body:not([data-size="xs"]):not([data-clock-solo="true"])[data-timer="done"] .clock-digits {
-    --digit-height: calc(100cqh - 116px);
+  .clock-face {
+    padding-top: 6px;
+    padding-bottom: 20px;
   }
 }
 
@@ -930,33 +944,21 @@ body[data-clock-solo="true"] .clock-view {
   cursor: default;
 }
 
-body[data-clock-solo="true"] .clock-presets,
-body[data-clock-solo="true"] .custom-duration,
-body[data-clock-solo="true"] .clock-actions,
-body[data-clock-solo="true"] #clock-duration-status {
+body[data-clock-solo="true"] .clock-controls {
   display: none;
 }
 
 body[data-clock-solo="true"] .clock-face {
+  --digit-width: 26cqw;
+  --digit-max: 280px;
   padding: 8px 8px 22px;
   gap: 0;
 }
 
-body[data-clock-solo="true"] .clock-digits {
-  --digit-width: 26cqw;
-  --digit-height: calc(100cqh - 36px);
-  --digit-max: 280px;
-}
-
-body[data-clock-solo="true"] .clock-digits[data-hours="true"] {
+body[data-clock-solo="true"][data-clock-hours="true"] .clock-face {
   --digit-width: 17cqw;
 }
 
-body[data-clock-solo="true"][data-clock-digits="stack"] .clock-digits {
+body[data-clock-solo="true"][data-clock-digits="stack"] .clock-face {
   --digit-width: 56cqw;
-  --digit-height: calc((100cqh - 36px) / 2.2);
-}
-
-body[data-clock-solo="true"][data-clock-digits="stack"] .clock-digits[data-hours="true"] {
-  --digit-height: calc((100cqh - 36px) / 3.2);
 }

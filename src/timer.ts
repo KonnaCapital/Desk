@@ -3,7 +3,6 @@ import {
   clockParts,
   formatTime,
   hoursToDurationMs,
-  nudgeDurationMs,
   remainingMs,
   timerPhase,
   windowTitle,
@@ -11,14 +10,39 @@ import {
 import { t } from "./i18n.ts";
 import type { Store } from "./store.ts";
 
-/** One mouse-wheel notch; trackpads add up small deltas until they reach it. */
-const WHEEL_NOTCH = 40;
+export type TimerHooks = {
+  /** Runs once each time the clock reaches zero. */
+  onComplete?: () => void;
+  /** Receives the window title for the time left, when it changes or ticks. */
+  onTitle?: (title: string) => void;
+  appName?: string;
+};
 
-export function mountTimer(
-  store: Store,
-  onComplete: () => void,
-  onTitle?: (title: string) => void,
-): void {
+/** One mouse-wheel notch in pixels; trackpads add up small deltas until they reach it. */
+export const WHEEL_NOTCH = 40;
+
+const WHEEL_LINE_PX = 16;
+const WHEEL_PAGE_PX = 800;
+
+/**
+ * Add one wheel event to the running total and report a whole step, if any:
+ * +1 for a notch up (more time), -1 for a notch down. Reversing direction
+ * starts a new count.
+ */
+export function wheelStep(
+  total: number,
+  delta: number,
+  deltaMode = 0,
+): { total: number; step: -1 | 0 | 1 } {
+  const px = delta * (deltaMode === 1 ? WHEEL_LINE_PX : deltaMode === 2 ? WHEEL_PAGE_PX : 1);
+  if (px === 0) return { total, step: 0 };
+  const next = Math.sign(px) === Math.sign(total) ? total + px : px;
+  if (Math.abs(next) < WHEEL_NOTCH) return { total: next, step: 0 };
+  return { total: 0, step: next < 0 ? 1 : -1 };
+}
+
+export function mountTimer(store: Store, hooks: TimerHooks = {}): void {
+  const { onComplete, onTitle, appName = "Desk" } = hooks;
   const digits = document.querySelector<HTMLButtonElement>("#clock-digits")!;
   const hoursEl = document.querySelector<HTMLElement>(".clock-hours")!;
   const minsEl = document.querySelector<HTMLElement>(".clock-mins")!;
@@ -76,8 +100,8 @@ export function mountTimer(
     presetsEl.querySelector<HTMLButtonElement>("[data-custom]")?.focus();
   });
 
-  // Scroll over the time to set it: one minute a notch, five with Shift.
-  let wheelDelta = 0;
+  // Scroll over the time to set it: a minute a notch, five with Shift.
+  let wheelTotal = 0;
   digits.addEventListener(
     "wheel",
     (event) => {
@@ -85,12 +109,9 @@ export function mountTimer(
       event.preventDefault();
       // Shift turns the wheel horizontal in Chromium.
       const delta = event.deltaY || event.deltaX;
-      if (Math.sign(delta) !== Math.sign(wheelDelta)) wheelDelta = 0;
-      wheelDelta += delta;
-      if (Math.abs(wheelDelta) < WHEEL_NOTCH) return;
-      const minutes = (event.shiftKey ? 5 : 1) * (wheelDelta < 0 ? 1 : -1);
-      wheelDelta = 0;
-      store.setDuration(nudgeDurationMs(store.state.timer.durationMs, minutes));
+      const { total, step } = wheelStep(wheelTotal, delta, event.deltaMode);
+      wheelTotal = total;
+      if (step !== 0) store.nudgeDuration(step * (event.shiftKey ? 5 : 1));
     },
     { passive: false },
   );
@@ -99,7 +120,6 @@ export function mountTimer(
     const closing = customOpen && !open;
     customOpen = open;
     form.classList.toggle("hidden", !open);
-    document.body.dataset.clockCustom = open ? "open" : "closed";
     presetsEl.querySelectorAll("button").forEach((btn) => {
       if (btn.dataset.custom !== undefined) btn.setAttribute("aria-expanded", String(open));
     });
@@ -117,17 +137,9 @@ export function mountTimer(
     minsInput.value = String(Math.floor(durationMs / 60_000) % 60);
   }
 
-  toggle.addEventListener("click", () => {
-    if (store.state.timer.running) store.pauseTimer();
-    else store.startTimer();
-  });
-
+  toggle.addEventListener("click", () => store.toggleTimer());
   reset.addEventListener("click", () => store.resetTimer());
-
-  digits.addEventListener("click", () => {
-    if (store.state.timer.running) store.pauseTimer();
-    else store.startTimer();
-  });
+  digits.addEventListener("click", () => store.toggleTimer());
 
   let completedFor: number | null = null;
   let refreshTimer: number | null = null;
@@ -138,12 +150,12 @@ export function mountTimer(
     const parts = clockParts(rem);
     hoursEl.hidden = parts.hours === null;
     hoursEl.textContent = parts.hours ?? "";
-    digits.dataset.hours = String(parts.hours !== null);
     digits.setAttribute("aria-label", `${timer.running ? t("pause") : t("start")}: ${formatTime(rem)}`);
     minsEl.textContent = parts.minutes;
     secsEl.textContent = parts.seconds;
     document.body.dataset.timer = timerPhase(timer, now);
-    onTitle?.(windowTitle(timer, now));
+    document.body.dataset.clockHours = String(parts.hours !== null);
+    onTitle?.(windowTitle(timer, now, appName));
     const ratio = timer.durationMs > 0 ? rem / timer.durationMs : 0;
     progressFill.style.transform = `scaleX(${Math.max(0, Math.min(1, ratio))})`;
     toggle.textContent = timer.running ? t("pause") : t("start");
@@ -164,7 +176,7 @@ export function mountTimer(
       if (completedFor !== stamp) {
         completedFor = stamp;
         store.completeTimer();
-        onComplete();
+        onComplete?.();
       }
     }
 

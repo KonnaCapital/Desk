@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { expectDigitsFit, expectPhase, openClock, progressVisible, snap } from "./helpers.ts";
+import {
+  expectDigitsFit,
+  expectGrouped,
+  expectPhase,
+  openClock,
+  progressVisible,
+  snap,
+} from "./helpers.ts";
 
 const SIZES = [
   { name: "lg", width: 1100, height: 720 },
@@ -24,6 +31,7 @@ for (const size of SIZES) {
     await expectPhase(page, "idle");
     await expect(actions).toBeVisible();
     expect(await progressVisible(page)).toBe(false);
+    await expectGrouped(page);
     await record("idle");
 
     const custom = page.locator("[data-custom]");
