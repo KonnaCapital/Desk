@@ -24,6 +24,7 @@ import {
   startTimer,
   timerPhase,
   visibleCards,
+  windowTitle,
 } from "./model.ts";
 import {
   Store,
@@ -180,6 +181,17 @@ describe("timer", () => {
     assert.equal(timerPhase(state.timer, 9_000), "idle");
     state = completeTimer(startTimer(state, 0));
     assert.equal(timerPhase(state.timer, 9_000), "done");
+  });
+
+  it("puts the time left in the window title while running or paused", () => {
+    let state = emptyState();
+    assert.equal(windowTitle(state.timer, 0), "Desk");
+    state = startTimer(state, 0);
+    assert.equal(windowTitle(state.timer, 107_000), "23:13 · Desk");
+    state = pauseTimer(state, 107_000);
+    assert.equal(windowTitle(state.timer, 200_000), "23:13 paused · Desk");
+    state = completeTimer(startTimer(state, 0));
+    assert.equal(windowTitle(state.timer, 0), "Desk");
   });
 });
 

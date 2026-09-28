@@ -2,6 +2,7 @@ import { Store, createMemoryPersist, createTauriPersist } from "./store.ts";
 import { mountBoard } from "./board.ts";
 import { mountChrome } from "./chrome.ts";
 import { mountTimer } from "./timer.ts";
+import { mountClockKeys } from "./clock-keys.ts";
 import { initI18n, t } from "./i18n.ts";
 
 function isTauri(): boolean {
@@ -43,6 +44,26 @@ async function notifyDone() {
   }
 }
 
+/** Mirror the clock into the window title so the taskbar and Alt-Tab show it. */
+function createTitleSync(): (title: string) => void {
+  let current = document.title;
+  let pending = Promise.resolve();
+  return (title) => {
+    if (title === current) return;
+    current = title;
+    document.title = title;
+    if (!isTauri()) return;
+    pending = pending.then(async () => {
+      try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        await getCurrentWindow().setTitle(title);
+      } catch {
+        // The taskbar keeps its last title.
+      }
+    });
+  };
+}
+
 async function boot() {
   initI18n();
   const persist = isTauri() ? await createTauriPersist() : createMemoryPersist();
@@ -50,9 +71,14 @@ async function boot() {
 
   await mountChrome(store);
   mountBoard(store);
-  mountTimer(store, () => {
-    void notifyDone();
-  });
+  mountTimer(
+    store,
+    () => {
+      void notifyDone();
+    },
+    createTitleSync(),
+  );
+  mountClockKeys(store);
 
   const flush = () => {
     void store.flush();
