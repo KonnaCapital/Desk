@@ -70,6 +70,22 @@ export async function expectDigitsFit(page: Page) {
   return fontSize;
 }
 
+/**
+ * The time and its controls read as one group: the first control sits close
+ * below the digits, or beside them in the one-row compact layout.
+ */
+export async function expectGrouped(page: Page) {
+  const digits = await boxOf(page.locator("#clock-digits"));
+  const start = await boxOf(page.locator("#timer-toggle"));
+  if (start.x >= digits.x + digits.width) {
+    expect(start.x - (digits.x + digits.width), "gap from digits to Start").toBeLessThanOrEqual(24);
+    return;
+  }
+  const presets = page.locator("#clock-presets");
+  const first = (await presets.isVisible()) ? await boxOf(presets) : start;
+  expect(first.y - (digits.y + digits.height), "gap from digits to the controls").toBeLessThanOrEqual(48);
+}
+
 export async function progressVisible(page: Page): Promise<boolean> {
   return page.evaluate(
     () => Number(getComputedStyle(document.querySelector(".clock-progress")!).opacity) > 0,

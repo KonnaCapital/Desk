@@ -452,11 +452,11 @@ export function timerPhase(timer: TimerState, now = Date.now()): TimerPhase {
 }
 
 /** The taskbar shows the time left while the clock runs or waits paused. */
-export function windowTitle(timer: TimerState, now = Date.now()): string {
+export function windowTitle(timer: TimerState, now = Date.now(), appName = "Desk"): string {
   const phase = timerPhase(timer, now);
-  if (phase === "running") return `${formatTime(remainingMs(timer, now))} · Desk`;
-  if (phase === "paused") return `${formatTime(remainingMs(timer, now))} paused · Desk`;
-  return "Desk";
+  if (phase === "running") return `${formatTime(remainingMs(timer, now))} · ${appName}`;
+  if (phase === "paused") return `${formatTime(remainingMs(timer, now))} paused · ${appName}`;
+  return appName;
 }
 
 export function sizeClass(width: number, height: number): SizeClass {

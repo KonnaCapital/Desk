@@ -15,7 +15,7 @@ const EN = {
   pinChangeError: "Could not change the window pin. Try again.",
   durationTooShort: "Minimum is 1 minute.",
   custom: "Custom",
-  clockHint: "Click to start · scroll to adjust",
+  clockHint: "Scroll to set the time",
   timerDone: "Timer at zero",
   showDataFolderError: "Could not open the data folder.",
 } as const;

@@ -9,6 +9,7 @@ import {
   emptyState,
   isStateEnvelope,
   moveCard as moveCardModel,
+  nudgeDurationMs,
   parseState,
   pauseTimer as pauseTimerModel,
   resetTimer as resetTimerModel,
@@ -398,6 +399,17 @@ export class Store {
 
   startTimer() {
     this.commit(startTimerModel(this.state));
+  }
+
+  toggleTimer() {
+    if (this.state.timer.running) this.pauseTimer();
+    else this.startTimer();
+  }
+
+  /** Step a stopped clock's duration; a running clock would restart, so it is left alone. */
+  nudgeDuration(minutes: number): boolean {
+    if (this.state.timer.running) return false;
+    return this.setDuration(nudgeDurationMs(this.state.timer.durationMs, minutes));
   }
 
   pauseTimer() {

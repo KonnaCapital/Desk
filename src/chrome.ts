@@ -23,7 +23,7 @@ import { WindowPinController } from "./pin.ts";
 import type { PersistenceState, Store } from "./store.ts";
 import { version } from "../package.json";
 
-export async function mountChrome(store: Store): Promise<void> {
+export async function mountChrome(store: Store, appName = "Desk"): Promise<void> {
   const boardBtn = document.querySelector<HTMLButtonElement>("#view-board")!;
   const clockBtn = document.querySelector<HTMLButtonElement>("#view-clock")!;
   const pinBtn = document.querySelector<HTMLButtonElement>("#pin-btn")!;
@@ -94,7 +94,8 @@ export async function mountChrome(store: Store): Promise<void> {
     .then((api) => new AutostartController(api))
     .catch(() => new AutostartController(null));
   let autostartController: AutostartController | null = null;
-  versionLabel.textContent = `Desk ${version}`;
+  versionLabel.textContent = `${appName} ${version}`;
+  document.querySelector<HTMLElement>(".app-name")!.textContent = appName;
   const settingsModal = createModalController(
     settingsBtn,
     closeSettingsBtn,

@@ -4,6 +4,7 @@
   "description": "Capability for the main window",
   "windows": ["main"],
   "permissions": [
+    "core:app:allow-name",
     "core:event:allow-listen",
     "core:path:allow-join",
     "core:path:allow-resolve-directory",
